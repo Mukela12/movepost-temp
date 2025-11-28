@@ -69,6 +69,10 @@ yarn-debug.log*
 yarn-error.log*
 debug.log
 
+# Supabase
+supabase/.temp/
+supabase/.DS_Store
+
 # Optional: Documentation that doesn't need to be deployed
 # Uncomment if you don't want these in production
 # DEMO_PAYMENT_GUIDE.md

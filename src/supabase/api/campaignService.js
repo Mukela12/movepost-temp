@@ -32,6 +32,7 @@ const campaignService = {
         company_id: company?.id || null,
         campaign_name: campaignData.campaign_name || campaignData.name || 'Untitled Campaign',
         status: campaignData.status || 'draft',
+        approval_status: 'pending', // All new campaigns require admin approval
 
         // Template & Design
         template_id: campaignData.template_id || null,
@@ -483,6 +484,78 @@ const campaignService = {
     } catch (error) {
       console.error('Error updating payment status:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Get analytics data aggregated by month
+   * @param {number} months - Number of months to fetch (default: 6)
+   * @returns {Promise<Array>} Monthly analytics data
+   */
+  async getAnalyticsData(months = 6) {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Calculate date range (last N months)
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - months);
+
+      // Fetch campaigns from the last N months
+      const { data: campaigns, error } = await supabase
+        .from('campaigns')
+        .select('created_at, postcards_sent, status')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Group campaigns by month
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlyData = {};
+
+      // Initialize all months in the range
+      for (let i = 0; i < months; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - (months - 1 - i));
+        const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        monthlyData[monthKey] = {
+          month: monthNames[date.getMonth()],
+          year: date.getFullYear(),
+          postcards_sent: 0,
+          campaigns: 0
+        };
+      }
+
+      // Aggregate campaign data
+      campaigns.forEach(campaign => {
+        const date = new Date(campaign.created_at);
+        const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+
+        if (monthlyData[monthKey]) {
+          monthlyData[monthKey].postcards_sent += campaign.postcards_sent || 0;
+          monthlyData[monthKey].campaigns += 1;
+        }
+      });
+
+      // Convert to array and return
+      const analyticsArray = Object.values(monthlyData);
+
+      return {
+        success: true,
+        analytics: analyticsArray
+      };
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+      throw {
+        error: error.message || 'Failed to fetch analytics data',
+        statusCode: error.statusCode || 400
+      };
     }
   }
 };

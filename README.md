@@ -83,6 +83,97 @@ src/
 5. **Targeting & Budget**: Set audience and budget
 6. **Review**: Confirm campaign settings
 
+## Environment Variables
+
+Required environment variables in `.env`:
+
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Cloudinary Configuration
+VITE_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+VITE_CLOUDINARY_API_KEY=your_cloudinary_api_key
+VITE_CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# IMG.LY Creative Engine
+VITE_IMGLY_LICENSE_KEY=your_imgly_license_key
+
+# External APIs
+VITE_MELISSA_API_KEY=your_melissa_api_key
+VITE_BRANDFETCH_API_KEY=your_brandfetch_api_key
+
+# Stripe (if using payments)
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+```
+
+See `.env.example` for all available configuration options.
+
+## Admin Dashboard
+
+The platform includes a comprehensive admin dashboard for managing campaigns and users.
+
+### Accessing Admin Dashboard
+
+**URL**: `https://yourdomain.com/admin/login`
+
+### Creating Admin Users
+
+After deploying, promote a user to admin with SQL:
+
+```sql
+-- Promote existing user to admin
+UPDATE profile
+SET role = 'admin'
+WHERE email = 'admin@yourcompany.com';
+
+-- Or create super admin
+UPDATE profile
+SET role = 'super_admin'
+WHERE email = 'superadmin@yourcompany.com';
+```
+
+### Admin Features
+
+- **Campaign Management**: Approve/reject/pause user campaigns
+- **User Management**: Block/unblock users, view user details
+- **Provider Integration**: Connect campaigns to mail providers (Lob, PostGrid, ClickSend)
+- **Activity Logging**: Complete audit trail of all admin actions
+- **Analytics**: Dashboard with key metrics and recent activities
+
+### Admin Roles
+
+- `admin`: Can manage campaigns and users
+- `super_admin`: Full access to all admin features (future use)
+
+### Database Migrations
+
+Before using the admin dashboard, apply migrations:
+
+```bash
+cd supabase
+npx supabase db push
+```
+
+Migrations include:
+- Admin role system
+- Campaign approval workflow
+- User blocking system
+- Activity logging tables
+
+### Troubleshooting
+
+**Cannot access admin dashboard:**
+1. Verify your user has `role = 'admin'` in the `profile` table
+2. Check that migrations have been applied
+3. Clear browser cache and try again
+
+**Activity logs not showing:**
+1. Ensure `admin_activity_logs` table exists
+2. Check RLS policies are enabled
+3. Verify admin user has proper permissions
+
 ## PSD Template Requirements
 
 ### Overview

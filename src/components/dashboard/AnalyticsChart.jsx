@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { BarChart3 } from 'lucide-react';
-import { mockCampaignService } from '../../services/mockDataService';
+import campaignService from '../../supabase/api/campaignService';
 import './AnalyticsChart.css';
 
 const AnalyticsChart = ({ data, total }) => {
@@ -16,9 +16,9 @@ const AnalyticsChart = ({ data, total }) => {
   const loadAnalyticsData = async () => {
     try {
       setIsLoading(true);
-      const result = await mockCampaignService.getAnalyticsData();
+      const result = await campaignService.getAnalyticsData(6);
       if (result.success) {
-        setAnalyticsData(result.data);
+        setAnalyticsData(result.analytics);
       }
     } catch (error) {
       console.error('Error loading analytics:', error);

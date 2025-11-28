@@ -23,12 +23,40 @@ import CreateBlast from './pages/CreateBlast'
 import History from './pages/History'
 import Settings from './pages/Settings'
 import Profile from './pages/Profile'
+import AdminLogin from './pages/admin/AdminLogin'
+import AdminLayout from './components/admin/AdminLayout'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminCampaigns from './pages/admin/AdminCampaigns'
+import AdminCampaignDetails from './pages/admin/AdminCampaignDetails'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminUserDetails from './pages/admin/AdminUserDetails'
+import AdminActivity from './pages/admin/AdminActivity'
+import AdminProtectedRoute from './components/admin/AdminProtectedRoute'
 import './App.css'
 
 function App() {
   return (
     <>
       <Routes>
+        {/* Admin routes - Real Supabase authentication */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="campaigns" element={<AdminCampaigns />} />
+          <Route path="campaigns/:campaignId" element={<AdminCampaignDetails />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="users/:userId" element={<AdminUserDetails />} />
+          <Route path="activity" element={<AdminActivity />} />
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        </Route>
+
         {/* Public routes */}
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />

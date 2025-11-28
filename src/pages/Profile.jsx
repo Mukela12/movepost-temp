@@ -1,29 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import Button from '../components/common/Button';
 import FormInput from '../components/common/FormInput';
-import { mockUserProfile } from '../services/mockData';
+import { getUserProfile, updateUserProfile } from '../supabase/api/profileService';
 import './Profile.css';
 
 const Profile = () => {
-  const [profileData, setProfileData] = useState(mockUserProfile);
+  const [profileData, setProfileData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(profileData);
+  const [formData, setFormData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await getUserProfile();
+
+      if (result.success) {
+        setProfileData(result.profile);
+        setFormData(result.profile);
+      } else {
+        setError(result.error || 'Failed to load profile');
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      setError('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    setProfileData(formData);
-    setIsEditing(false);
-    // Here you would typically make an API call to save the data
-    console.log('Profile updated:', formData);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      const result = await updateUserProfile(formData);
+
+      if (result.success) {
+        setProfileData(result.profile);
+        setFormData(result.profile);
+        setIsEditing(false);
+        console.log('Profile updated successfully');
+      } else {
+        setError(result.error || 'Failed to update profile');
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setFormData(profileData);
     setIsEditing(false);
+    setError(null);
   };
 
   const handleAvatarUpload = (e) => {
@@ -37,20 +82,56 @@ const Profile = () => {
     }
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="profile-page">
+          <div className="profile-loading">
+            <p>Loading profile...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show error state if profile failed to load
+  if (!profileData || !formData) {
+    return (
+      <DashboardLayout>
+        <div className="profile-page">
+          <div className="profile-error">
+            <p>{error || 'Failed to load profile'}</p>
+            <Button variant="primary" onClick={loadProfile}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="profile-page">
+        {/* Error Message */}
+        {error && (
+          <div className="profile-error-banner">
+            {error}
+          </div>
+        )}
+
         {/* Header */}
         <div className="profile-header">
           <h1 className="profile-title">Profile</h1>
           <div className="profile-actions">
             {isEditing ? (
               <>
-                <Button variant="secondary" onClick={handleCancel}>
+                <Button variant="secondary" onClick={handleCancel} disabled={saving}>
                   Cancel
                 </Button>
-                <Button variant="primary" onClick={handleSave}>
-                  Save Changes
+                <Button variant="primary" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </>
             ) : (

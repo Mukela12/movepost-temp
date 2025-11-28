@@ -1,4 +1,0 @@
-id,customer_id,stripe_setup_intent_id,client_secret,status,payment_method_id,metadata,created_at,updated_at
-0aa00996-419f-42be-9f02-ed0df5e69f52,6853d6d7-a573-4b36-acd9-4f77dc9e67e1,seti_1SRrnRFE8ZYw5bODDTVDTX8Z,seti_1SRrnRFE8ZYw5bODDTVDTX8Z_secret_TOf7crydCa1CcSLFzU7dlCDetOOJgN6,requires_payment_method,,,2025-11-10 09:54:01.435421+00,2025-11-10 09:54:01.435421+00
-514b067f-5d10-485f-9593-5077597f79d1,16c73177-f075-4b7d-8818-78dc0b9c871e,seti_1SI37NFE8ZYw5bODqkYV847C,seti_1SI37NFE8ZYw5bODqkYV847C_secret_TEW9oqwrtdTlWr3dqQbAueUErcmNEPw,requires_payment_method,,,2025-10-14 07:58:01.432658+00,2025-10-14 07:58:01.432658+00
-b12b17f3-97cd-4bf5-95fe-7f5e91c9ad09,c045af5f-443c-4539-8e45-9a2c3cb5d31e,seti_1SIK8gFE8ZYw5bOD2zriDeJT,seti_1SIK8gFE8ZYw5bOD2zriDeJT_secret_TEnkfyjHiAsJXMEgRS1paykTHKOwEeQ,requires_payment_method,,,2025-10-15 02:08:30.790832+00,2025-10-15 02:08:30.790832+00

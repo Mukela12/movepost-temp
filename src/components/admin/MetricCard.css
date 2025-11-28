@@ -1,0 +1,193 @@
+/* Metric Card Styles */
+
+.metric-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  transition: all 0.3s ease;
+}
+
+.metric-card-clickable {
+  cursor: pointer;
+}
+
+.metric-card-clickable:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Color Variants */
+.metric-card-primary::before {
+  background: linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%);
+}
+
+.metric-card-success::before {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+}
+
+.metric-card-warning::before {
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+}
+
+.metric-card-error::before {
+  background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);
+}
+
+.metric-card-info::before {
+  background: linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%);
+}
+
+.metric-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.metric-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.metric-card-primary .metric-card-icon {
+  background: linear-gradient(135deg, rgba(32, 178, 170, 0.1) 0%, rgba(72, 209, 204, 0.1) 100%);
+  color: #20B2AA;
+}
+
+.metric-card-success .metric-card-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%);
+  color: #10B981;
+}
+
+.metric-card-warning .metric-card-icon {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%);
+  color: #F59E0B;
+}
+
+.metric-card-error .metric-card-icon {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(248, 113, 113, 0.1) 100%);
+  color: #EF4444;
+}
+
+.metric-card-info .metric-card-icon {
+  background: linear-gradient(135deg, rgba(32, 178, 170, 0.1) 0%, rgba(72, 209, 204, 0.1) 100%);
+  color: #20B2AA;
+}
+
+.metric-card-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.metric-card-trend.trend-up {
+  background-color: #ECFDF5;
+  color: #10B981;
+}
+
+.metric-card-trend.trend-down {
+  background-color: #FEF2F2;
+  color: #EF4444;
+}
+
+.metric-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #718096;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-card-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+  line-height: 1;
+}
+
+/* Loading State */
+.metric-card-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metric-card-skeleton {
+  background: linear-gradient(90deg, #f7fafc 0%, #edf2f7 50%, #f7fafc 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.metric-card-skeleton-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+}
+
+.metric-card-skeleton-title {
+  width: 60%;
+  height: 16px;
+}
+
+.metric-card-skeleton-value {
+  width: 80%;
+  height: 32px;
+  margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .metric-card {
+    padding: 20px;
+  }
+
+  .metric-card-value {
+    font-size: 28px;
+  }
+
+  .metric-card-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .metric-card-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+}

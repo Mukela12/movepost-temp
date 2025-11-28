@@ -6,13 +6,8 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import EmptyState from '../components/dashboard/EmptyState';
 import CampaignCard from '../components/dashboard/CampaignCard';
 import campaignService from '../supabase/api/campaignService';
-import { mockCampaignService } from '../services/mockDataService';
 import toast from 'react-hot-toast';
 import './Dashboard.css';
-
-// Toggle between mock data and real Supabase
-// Set to true for local development with mock data
-const USE_MOCK_DATA = false;
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -29,11 +24,8 @@ const Dashboard = () => {
     try {
       setIsLoading(true);
 
-      // Choose data source
-      const dataService = USE_MOCK_DATA ? mockCampaignService : campaignService;
-
       // Load campaigns
-      const campaignsResult = await dataService.getCampaigns();
+      const campaignsResult = await campaignService.getCampaigns();
 
       if (campaignsResult.success) {
         // Transform campaigns to match existing format
@@ -60,7 +52,7 @@ const Dashboard = () => {
       }
 
       // Load statistics
-      const statsResult = await dataService.getCampaignStats();
+      const statsResult = await campaignService.getCampaignStats();
 
       if (statsResult.success) {
         setCampaignStats(statsResult.stats);
@@ -94,8 +86,7 @@ const Dashboard = () => {
     try {
       toast.loading('Deleting campaign...', { id: 'delete-campaign' });
 
-      const dataService = USE_MOCK_DATA ? mockCampaignService : campaignService;
-      await dataService.deleteCampaign(campaignId);
+      await campaignService.deleteCampaign(campaignId);
 
       toast.success('Campaign deleted successfully', { id: 'delete-campaign' });
 
@@ -111,8 +102,7 @@ const Dashboard = () => {
     try {
       toast.loading('Duplicating campaign...', { id: 'duplicate-campaign' });
 
-      const dataService = USE_MOCK_DATA ? mockCampaignService : campaignService;
-      const result = await dataService.duplicateCampaign(campaignId);
+      const result = await campaignService.duplicateCampaign(campaignId);
 
       if (result.success) {
         toast.success('Campaign duplicated successfully', { id: 'duplicate-campaign' });
@@ -136,8 +126,7 @@ const Dashboard = () => {
 
       toast.loading(campaign.isActive ? 'Pausing campaign...' : 'Activating campaign...', { id: 'toggle-status' });
 
-      const dataService = USE_MOCK_DATA ? mockCampaignService : campaignService;
-      await dataService.updateCampaign(campaignId, { status: newStatus });
+      await campaignService.updateCampaign(campaignId, { status: newStatus });
 
       toast.success(campaign.isActive ? 'Campaign paused' : 'Campaign activated', { id: 'toggle-status' });
 
