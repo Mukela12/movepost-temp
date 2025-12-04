@@ -1,5 +1,8 @@
 import { supabase } from "../integration/client";
 import { dollarsToCents } from "../../utils/pricing";
+import Stripe from "stripe";
+
+const stripekey = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY);
 
 export const paymentService = {
   async createSetupIntent(email) {
@@ -366,11 +369,22 @@ export const paymentService = {
 
   /**
    * Save a new payment method using Stripe CardElement
+   * ✅ FIXED: Now accepts stripe instance as parameter
+   * @param {Object} stripe - Stripe instance from useStripe() hook
    * @param {Object} cardElement - Stripe CardElement
    * @returns {Promise<Object>} Result object with success status
    */
-  async savePaymentMethod(cardElement) {
+  async savePaymentMethod(stripe, cardElement) {
     try {
+      // Validate inputs
+      if (!stripe) {
+        return { success: false, error: 'Stripe is not initialized' };
+      }
+
+      if (!cardElement) {
+        return { success: false, error: 'Card element is required' };
+      }
+
       // Get session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -408,9 +422,7 @@ export const paymentService = {
         return { success: false, error: errorMsg };
       }
 
-      // Confirm the setup intent with Stripe (with 30 second timeout)
-      const stripe = window.Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
+      // ✅ FIX: Use the stripe instance passed as parameter (same one used for CardElement)
       // Wrap Stripe confirmation with timeout to handle both timeout and actual errors
       const confirmWithTimeout = async () => {
         return Promise.race([
@@ -447,16 +459,19 @@ export const paymentService = {
         return { success: false, error: 'Payment method setup failed' };
       }
 
+      const paymentMethod = await stripekey.paymentMethods.retrieve(
+        setupIntent.payment_method 
+      );
+
       // Add payment method details to setupIntent object for addPaymentMethod
       setupIntent.payment_method_details = {
         card: {
-          brand: setupIntent.payment_method?.card?.brand || 'unknown',
-          last4: setupIntent.payment_method?.card?.last4 || '0000',
-          exp_month: setupIntent.payment_method?.card?.exp_month || 1,
-          exp_year: setupIntent.payment_method?.card?.exp_year || 2025,
+          brand: paymentMethod?.card?.brand ,
+          last4: paymentMethod?.card?.last4,
+          exp_month: paymentMethod?.card?.exp_month,
+          exp_year: paymentMethod?.card?.exp_year,
         }
       };
-
       // Add the payment method to database
       await this.addPaymentMethod(setupIntent);
 
@@ -507,20 +522,20 @@ export const paymentService = {
         .eq('customer_id', customer.id);
 
       const isFirstMethod = !existingMethods || existingMethods.length === 0;
-
       // Insert payment method into database
       const { data: paymentMethod, error } = await supabase
         .from('payment_methods')
         .insert({
           customer_id: customer.id,
           stripe_payment_method_id: setupIntent.payment_method,
-          brand: setupIntent.payment_method_details?.card?.brand || 'unknown',
-          last4: setupIntent.payment_method_details?.card?.last4 || '0000',
-          exp_month: setupIntent.payment_method_details?.card?.exp_month || 1,
-          exp_year: setupIntent.payment_method_details?.card?.exp_year || 2025,
+          card_brand: setupIntent.payment_method_details?.card?.brand || 'unknown',
+          card_last4: setupIntent.payment_method_details?.card?.last4 || '0000',
+          card_exp_month: setupIntent.payment_method_details?.card?.exp_month || 1,
+          card_exp_year: setupIntent.payment_method_details?.card?.exp_year || 2025,
           is_default: isFirstMethod, // First payment method is default
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          type:'card'
         })
         .select()
         .single();

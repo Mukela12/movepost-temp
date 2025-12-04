@@ -89,7 +89,6 @@ const BillingTab = () => {
       if (result.success) {
         toast.success('Payment method removed');
         loadPaymentMethods();
-        checkPaymentMethodStatus();
       } else {
         toast.error(result.error || 'Failed to remove payment method');
       }
@@ -358,7 +357,6 @@ const BillingTab = () => {
                       onSuccess={() => {
                         setShowAddCard(false);
                         loadPaymentMethods();
-                        checkPaymentMethodStatus();
                       }}
                       onCancel={() => setShowAddCard(false)}
                     />
@@ -922,8 +920,8 @@ const AddPaymentMethodForm = ({ onSuccess, onCancel }) => {
 
       console.log('[BillingTab] Starting payment method addition...');
 
-      // Create SetupIntent
-      const result = await paymentService.savePaymentMethod(cardElement);
+      // ✅ FIX: Pass stripe instance to service
+      const result = await paymentService.savePaymentMethod(stripe, cardElement);
 
       console.log('[BillingTab] Payment method result:', result);
 
