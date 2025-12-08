@@ -152,6 +152,28 @@ serve(async (req) => {
 
     console.log('[confirm-setup-intent] Payment method saved:', savedMethod.id)
 
+    // Log payment method addition to activity logs
+    try {
+      await supabaseClient.from('admin_activity_logs').insert({
+        admin_id: null,
+        user_id: user.id,
+        action_type: 'payment_method_added',
+        target_type: 'payment_method',
+        target_id: savedMethod.id,
+        metadata: {
+          card_brand: savedMethod.card_brand,
+          card_last4: savedMethod.card_last4,
+          is_default: isFirstMethod,
+          stripe_payment_method_id: pmDetails.id,
+          timestamp: new Date().toISOString(),
+        },
+      })
+      console.log('[confirm-setup-intent] Activity log created')
+    } catch (logError: any) {
+      console.error('[confirm-setup-intent] Failed to create activity log:', logError.message)
+      // Don't fail the operation if logging fails
+    }
+
     // Set as default payment method in Stripe if it's the first one
     if (isFirstMethod) {
       console.log('[confirm-setup-intent] Setting as default payment method in Stripe')
@@ -195,6 +217,40 @@ serve(async (req) => {
       stack: error.stack,
       name: error.name
     })
+
+    // Log payment method addition failure to activity logs
+    try {
+      // Try to get user from auth header if available
+      const authHeader = req.headers.get('Authorization')
+      if (authHeader) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          { global: { headers: { Authorization: authHeader } } }
+        )
+
+        const token = authHeader.replace('Bearer ', '').trim()
+        const { data: { user } } = await supabaseClient.auth.getUser(token)
+
+        if (user) {
+          await supabaseClient.from('admin_activity_logs').insert({
+            admin_id: null,
+            user_id: user.id,
+            action_type: 'payment_method_failed',
+            target_type: 'payment_method',
+            target_id: null,
+            metadata: {
+              error: error.message || 'Unknown error',
+              timestamp: new Date().toISOString(),
+            },
+          })
+          console.log('[confirm-setup-intent] Failure activity log created')
+        }
+      }
+    } catch (logError: any) {
+      console.error('[confirm-setup-intent] Failed to create failure activity log:', logError.message)
+      // Don't fail the error response if logging fails
+    }
 
     return new Response(
       JSON.stringify({

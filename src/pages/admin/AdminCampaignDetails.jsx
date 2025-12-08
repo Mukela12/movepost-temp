@@ -31,6 +31,7 @@ import {
   deleteCampaign,
   getCurrentAdminId
 } from '../../supabase/api/adminActions';
+import PollingStatusBadge from '../../components/admin/PollingStatusBadge';
 import toast from 'react-hot-toast';
 import './AdminCampaignDetails.css';
 
@@ -232,8 +233,14 @@ const AdminCampaignDetails = () => {
       const result = await approveCampaign(campaignId, adminId);
 
       if (result.success) {
-        toast.success('Campaign approved successfully');
-        await loadCampaignDetails(); // Reload to show updated status
+        // Show the detailed success message from the API
+        toast.success(result.message || 'Campaign approved successfully', {
+          duration: 6000, // Show for 6 seconds to read all details
+          style: { whiteSpace: 'pre-line' } // Preserve line breaks
+        });
+
+        // Reload to show campaign status changes
+        await loadCampaignDetails();
       } else {
         toast.error(result.error || 'Failed to approve campaign');
       }
@@ -439,6 +446,13 @@ const AdminCampaignDetails = () => {
           <h1>{campaign.campaign_name}</h1>
           <div className="admin-details-header-meta">
             {getStatusBadge()}
+            <span className="admin-details-separator">•</span>
+            <PollingStatusBadge
+              pollingEnabled={campaign.polling_enabled}
+              lastPolledAt={campaign.last_polled_at}
+              pollingFrequencyHours={campaign.polling_frequency_hours || 0.5}
+              size="small"
+            />
             <span className="admin-details-separator">•</span>
             <span className="admin-details-campaign-id">ID: {campaign.id.slice(0, 8)}</span>
           </div>
@@ -798,6 +812,54 @@ const AdminCampaignDetails = () => {
                 Download New Mover Data (CSV)
               </button>
             )}
+          </motion.div>
+
+          {/* Polling Information - New Section */}
+          <motion.div
+            className="admin-details-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <h3 className="admin-details-card-title">
+              <Clock size={20} />
+              Polling Information
+            </h3>
+            <div className="admin-details-info-list">
+              <div className="admin-details-info-item">
+                <div style={{ width: '100%' }}>
+                  <PollingStatusBadge
+                    pollingEnabled={campaign.polling_enabled}
+                    lastPolledAt={campaign.last_polled_at}
+                    pollingFrequencyHours={campaign.polling_frequency_hours || 0.5}
+                    size="medium"
+                    showDetails={true}
+                  />
+                </div>
+              </div>
+              <div className="admin-details-info-item">
+                <Mail size={16} />
+                <div>
+                  <span className="admin-details-info-label">Postcards Sent</span>
+                  <span className="admin-details-info-value">{campaign.postcards_sent || 0}</span>
+                </div>
+              </div>
+              <div className="admin-details-info-item">
+                <DollarSign size={16} />
+                <div>
+                  <span className="admin-details-info-label">Total Charged</span>
+                  <span className="admin-details-info-value">{formatCurrency(campaign.total_cost || 0)}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: '16px', padding: '12px', background: '#F1F5F9', borderRadius: '8px', fontSize: '13px', color: '#475569' }}>
+              <strong>How polling works:</strong>
+              <ul style={{ marginTop: '8px', marginLeft: '20px', lineHeight: '1.6' }}>
+                <li>System checks Melissa API every {campaign.polling_frequency_hours === 0.5 ? '30 minutes' : `${campaign.polling_frequency_hours || 0.5} hours`} for new movers</li>
+                <li>When new movers are found, postcards are automatically sent via PostGrid</li>
+                <li>You're charged $3.00 immediately when each postcard is sent</li>
+              </ul>
+            </div>
           </motion.div>
         </div>
       </div>

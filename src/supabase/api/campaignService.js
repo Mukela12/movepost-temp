@@ -153,13 +153,28 @@ const campaignService = {
         throw new Error('User not authenticated');
       }
 
-      const { data, error } = await supabase
+      // Check if user is admin
+      const { data: profile } = await supabase
+        .from('profile')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      const isAdmin = profile && ['admin', 'super_admin'].includes(profile.role);
+
+      // Build query - skip user_id filter for admins
+      let query = supabase
         .from('campaigns')
         .select('*')
         .eq('id', campaignId)
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .single();
+        .is('deleted_at', null);
+
+      // Only filter by user_id for non-admin users
+      if (!isAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.single();
 
       if (error) throw error;
 
@@ -232,14 +247,30 @@ const campaignService = {
         throw new Error('User not authenticated');
       }
 
+      // Check if user is admin
+      const { data: profile } = await supabase
+        .from('profile')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      const isAdmin = profile && ['admin', 'super_admin'].includes(profile.role);
+
       // Add updated_at timestamp
       updates.updated_at = new Date().toISOString();
 
-      const { data, error } = await supabase
+      // Build query - skip user_id filter for admins
+      let query = supabase
         .from('campaigns')
         .update(updates)
-        .eq('id', campaignId)
-        .eq('user_id', user.id)
+        .eq('id', campaignId);
+
+      // Only filter by user_id for non-admin users
+      if (!isAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query
         .select()
         .single();
 
@@ -587,9 +618,9 @@ const campaignService = {
       console.log(`[Campaign Service] Calculated cost: $${totalCost.toFixed(2)} for ${campaign.postcards_sent || campaign.total_recipients} postcards`);
 
       // Import payment service here to avoid circular dependency
-      const { default: paymentService } = await import('./paymentService.js');
+      const { paymentService } = await import('./paymentService.js');
 
-      // Charge the campaign
+      // Charge the campaign (pass campaign.user_id for admin approvals)
       const chargeResult = await paymentService.chargeCampaign(
         campaignId,
         totalCostCents,
@@ -597,7 +628,8 @@ const campaignService = {
           campaign_name: campaign.campaign_name,
           billing_reason: 'campaign_approval',
           postcard_count: (campaign.postcards_sent || campaign.total_recipients).toString(),
-        }
+        },
+        campaign.user_id
       );
 
       console.log(`[Campaign Service] Charge result:`, chargeResult);

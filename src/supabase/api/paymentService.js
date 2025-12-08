@@ -107,7 +107,7 @@ export const paymentService = {
    * @param {Object} metadata - Additional metadata
    * @returns {Promise<Object>} Charge result
    */
-  async chargeCampaign(campaignId, amountCents, metadata = {}) {
+  async chargeCampaign(campaignId, amountCents, metadata = {}, userId = null) {
     console.log('[Payment Service] Charging campaign:', campaignId, 'Amount:', amountCents / 100);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -116,12 +116,15 @@ export const paymentService = {
       throw new Error('Not authenticated');
     }
 
+    // Use provided userId or fall back to session user (for admin approvals vs self-service)
+    const targetUserId = userId || session.user.id;
+
     try {
       // Get user's customer record
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .select('id, stripe_customer_id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', targetUserId)
         .single();
 
       if (customerError || !customer) {
@@ -168,7 +171,7 @@ export const paymentService = {
           metadata: {
             ...metadata,
             campaign_id: campaignId,
-            user_id: session.user.id,
+            user_id: targetUserId,
           },
           customerId: customer.stripe_customer_id,
           paymentMethodId: paymentMethod.stripe_payment_method_id,
@@ -605,6 +608,32 @@ export const paymentService = {
         return { success: false, error: error.message };
       }
 
+      // Log default payment method change to activity logs
+      try {
+        const { data: pmData } = await supabase
+          .from('payment_methods')
+          .select('card_brand, card_last4')
+          .eq('id', paymentMethodId)
+          .single();
+
+        await supabase.from('admin_activity_logs').insert({
+          admin_id: null,
+          user_id: user.id,
+          action_type: 'payment_method_default_changed',
+          target_type: 'payment_method',
+          target_id: paymentMethodId,
+          metadata: {
+            card_brand: pmData?.card_brand,
+            card_last4: pmData?.card_last4,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        console.log('[paymentService] Activity log created for default change');
+      } catch (logError) {
+        console.error('[paymentService] Failed to create activity log:', logError.message);
+        // Don't fail the operation if logging fails
+      }
+
       return { success: true };
     } catch (error) {
       console.error('[paymentService] Error setting default payment method:', error);
@@ -644,6 +673,13 @@ export const paymentService = {
         return { success: false, error: 'Customer not found' };
       }
 
+      // Get payment method details before deleting (for activity log)
+      const { data: pmData } = await supabase
+        .from('payment_methods')
+        .select('card_brand, card_last4')
+        .eq('id', paymentMethodId)
+        .single();
+
       // Delete the payment method
       const { error } = await supabase
         .from('payment_methods')
@@ -654,6 +690,26 @@ export const paymentService = {
       if (error) {
         console.error('[paymentService] Error deleting payment method:', error);
         return { success: false, error: error.message };
+      }
+
+      // Log payment method removal to activity logs
+      try {
+        await supabase.from('admin_activity_logs').insert({
+          admin_id: null,
+          user_id: user.id,
+          action_type: 'payment_method_removed',
+          target_type: 'payment_method',
+          target_id: paymentMethodId,
+          metadata: {
+            card_brand: pmData?.card_brand,
+            card_last4: pmData?.card_last4,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        console.log('[paymentService] Activity log created for removal');
+      } catch (logError) {
+        console.error('[paymentService] Failed to create activity log:', logError.message);
+        // Don't fail the operation if logging fails
       }
 
       // If this was the default method, set another as default

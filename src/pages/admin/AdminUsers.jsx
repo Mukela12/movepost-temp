@@ -246,17 +246,20 @@ const AdminUsers = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  {/* User Info */}
+                  {/* User Info - Grid Layout for Perfect Alignment */}
                   <div
                     className="admin-user-main"
                     onClick={() => navigate(`/admin/users/${user.id}`)}
                     style={{ cursor: 'pointer' }}
                   >
+                    {/* Avatar - Grid Column 1 */}
+                    <div className="admin-user-avatar">
+                      {user.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+
+                    {/* User Details - Grid Column 2 */}
                     <div className="admin-user-info">
                       <div className="admin-user-header-row">
-                        <div className="admin-user-avatar">
-                          {user.full_name?.charAt(0)?.toUpperCase() || 'U'}
-                        </div>
                         <div className="admin-user-details">
                           <h3 className="admin-user-name">{user.full_name}</h3>
                           <span className="admin-user-email">{user.email}</span>
@@ -284,7 +287,7 @@ const AdminUsers = () => {
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions - Now on the RIGHT */}
                   <AnimatePresence mode="wait">
                     {isActionActive ? (
                       <motion.div
@@ -356,7 +359,10 @@ const AdminUsers = () => {
                         {!user.is_blocked ? (
                           <button
                             className="admin-action-btn block"
-                            onClick={() => handleBlockClick(user.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBlockClick(user.id);
+                            }}
                             title="Block user"
                           >
                             Block User
@@ -364,7 +370,10 @@ const AdminUsers = () => {
                         ) : (
                           <button
                             className="admin-action-btn unblock"
-                            onClick={() => handleUnblockClick(user.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnblockClick(user.id);
+                            }}
                             title="Unblock user"
                           >
                             Unblock User

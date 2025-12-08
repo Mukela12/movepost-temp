@@ -134,6 +134,34 @@ async function handlePaymentSuccess(
     console.log(`✅ Transaction recorded: ${transaction.id}`)
 
     // ============================================================================
+    // LOG SUCCESSFUL TRANSACTION TO ACTIVITY LOGS
+    // ============================================================================
+    try {
+      await supabase.from('admin_activity_logs').insert({
+        admin_id: null,
+        user_id: userId,
+        action_type: 'transaction_succeeded',
+        target_type: 'transaction',
+        target_id: transaction.id,
+        metadata: {
+          amount_dollars: transaction.amount_dollars,
+          billing_reason: billingReason,
+          new_mover_count: newMoverCount > 0 ? newMoverCount : null,
+          campaign_id: campaignId,
+          stripe_payment_intent_id: paymentIntent.id,
+          payment_method_last4: paymentMethod?.card?.last4,
+          payment_method_brand: paymentMethod?.card?.brand,
+          is_test_mode: isTestMode,
+          timestamp: new Date().toISOString(),
+        },
+      })
+      console.log('   📝 Activity log created for successful transaction')
+    } catch (logError: any) {
+      console.error('   ⚠️  Failed to create activity log:', logError.message)
+      // Don't fail the transaction if logging fails
+    }
+
+    // ============================================================================
     // UPDATE CAMPAIGN STATUS
     // ============================================================================
     if (campaignId) {
@@ -236,6 +264,34 @@ async function handlePaymentFailed(
       console.error('Error inserting failed transaction:', txError)
     } else {
       console.log(`✅ Failed transaction recorded`)
+    }
+
+    // ============================================================================
+    // LOG FAILED TRANSACTION TO ACTIVITY LOGS
+    // ============================================================================
+    try {
+      await supabase.from('admin_activity_logs').insert({
+        admin_id: null,
+        user_id: userId,
+        action_type: 'transaction_failed',
+        target_type: 'transaction',
+        target_id: null,
+        metadata: {
+          amount_dollars: paymentIntent.amount / 100,
+          billing_reason: billingReason,
+          new_mover_count: newMoverCount > 0 ? newMoverCount : null,
+          campaign_id: campaignId,
+          stripe_payment_intent_id: paymentIntent.id,
+          failure_code: failureCode,
+          failure_message: failureMessage,
+          is_test_mode: isTestMode,
+          timestamp: new Date().toISOString(),
+        },
+      })
+      console.log('   📝 Activity log created for failed transaction')
+    } catch (logError: any) {
+      console.error('   ⚠️  Failed to create activity log:', logError.message)
+      // Don't fail the webhook if logging fails
     }
 
     // ============================================================================
@@ -401,6 +457,32 @@ async function handleRefund(charge: Stripe.Charge, supabase: any) {
       console.error('Error updating transaction refund status:', updateError)
     } else {
       console.log(`✅ Transaction ${transaction.id} updated to ${refundStatus}`)
+    }
+
+    // ============================================================================
+    // LOG REFUND TO ACTIVITY LOGS
+    // ============================================================================
+    try {
+      await supabase.from('admin_activity_logs').insert({
+        admin_id: null,
+        user_id: transaction.user_id,
+        action_type: 'transaction_refunded',
+        target_type: 'transaction',
+        target_id: transaction.id,
+        metadata: {
+          original_amount_dollars: transaction.amount_dollars,
+          refund_amount_dollars: refundAmount / 100,
+          refund_status: refundStatus,
+          campaign_id: transaction.campaign_id,
+          stripe_payment_intent_id: paymentIntentId,
+          stripe_charge_id: charge.id,
+          timestamp: new Date().toISOString(),
+        },
+      })
+      console.log('   📝 Activity log created for refund')
+    } catch (logError: any) {
+      console.error('   ⚠️  Failed to create activity log:', logError.message)
+      // Don't fail the webhook if logging fails
     }
 
     // If campaign was refunded, update campaign status

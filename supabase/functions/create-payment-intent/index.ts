@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import Stripe from 'https://esm.sh/stripe@11.1.0?target=deno'
+import Stripe from 'https://esm.sh/stripe@14?target=denonext'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Initialize Stripe with latest 2025 API version
+// Initialize Stripe with stable API version (matches working Edge Functions)
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2023-10-16',
+  httpClient: Stripe.createFetchHttpClient(),
 })
 
 const corsHeaders = {
@@ -14,12 +15,13 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
   try {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders })
+    }
+
+    try {
     // ============================================================================
     // AUTHENTICATION
     // ============================================================================
@@ -47,6 +49,17 @@ serve(async (req) => {
     if (userError || !user) {
       throw new Error('Unauthorized')
     }
+
+    // ============================================================================
+    // CHECK IF USER IS ADMIN
+    // ============================================================================
+    const { data: profile } = await supabaseClient
+      .from('profile')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    const isAdmin = profile && ['admin', 'super_admin'].includes(profile.role)
 
     // ============================================================================
     // PARSE REQUEST
@@ -80,12 +93,18 @@ serve(async (req) => {
     // ============================================================================
     // VALIDATE CUSTOMER OWNERSHIP
     // ============================================================================
-    const { data: customer, error: customerError } = await supabaseClient
+    // Build query - admins can charge any customer, regular users only their own
+    let customerQuery = supabaseClient
       .from('customers')
       .select('id, stripe_customer_id, user_id')
-      .eq('user_id', user.id)
       .eq('stripe_customer_id', customerId)
-      .single()
+
+    // Only filter by user_id for non-admin users
+    if (!isAdmin) {
+      customerQuery = customerQuery.eq('user_id', user.id)
+    }
+
+    const { data: customer, error: customerError } = await customerQuery.single()
 
     if (customerError || !customer) {
       throw new Error('Customer not found or unauthorized')
@@ -121,12 +140,18 @@ serve(async (req) => {
     // VALIDATE CAMPAIGN OWNERSHIP (if campaignId provided)
     // ============================================================================
     if (campaignId) {
-      const { data: campaign, error: campaignError } = await supabaseClient
+      // Build query - admins can charge any campaign, regular users only their own
+      let campaignQuery = supabaseClient
         .from('campaigns')
         .select('id, user_id')
         .eq('id', campaignId)
-        .eq('user_id', user.id)
-        .single()
+
+      // Only filter by user_id for non-admin users
+      if (!isAdmin) {
+        campaignQuery = campaignQuery.eq('user_id', user.id)
+      }
+
+      const { data: campaign, error: campaignError } = await campaignQuery.single()
 
       if (campaignError || !campaign) {
         throw new Error('Campaign not found or unauthorized')
@@ -268,16 +293,32 @@ serve(async (req) => {
       userFriendlyMessage = 'Payment authentication failed. Please contact support.'
     }
 
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: userFriendlyMessage,
+          errorCode: errorCode,
+          errorDetails: errorMessage, // For logging/debugging
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        },
+      )
+    }
+  } catch (error: any) {
+    // Catch-all for any unexpected errors (e.g., JSON parsing, OPTIONS handler errors)
+    console.error('Unexpected error in create-payment-intent:', error)
     return new Response(
       JSON.stringify({
         success: false,
-        error: userFriendlyMessage,
-        errorCode: errorCode,
-        errorDetails: errorMessage, // For logging/debugging
+        error: 'An unexpected error occurred',
+        errorCode: 'unexpected_error',
+        errorDetails: error.message,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 500,
       },
     )
   }

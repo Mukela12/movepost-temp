@@ -87,7 +87,11 @@ const CampaignStep5 = () => {
         postcards_sent: 0,
         price_per_postcard: targetingData.flatRate || 3.00,
         payment_status: 'pending',
-        launched_at: new Date().toISOString()
+        launched_at: new Date().toISOString(),
+        // Enable polling for continuous new mover discovery
+        polling_enabled: targetingData.pollingEnabled !== false, // Default true
+        polling_frequency_hours: 0.5, // Poll every 30 minutes
+        last_polled_at: null // Will be set on first poll
       };
 
       // Update existing draft campaign to active
@@ -146,7 +150,11 @@ const CampaignStep5 = () => {
         total_recipients: targetingData.totalRecipients || 0,
         postcards_sent: 0,
         price_per_postcard: targetingData.flatRate || 3.00,
-        payment_status: 'pending'
+        payment_status: 'pending',
+        // Enable polling for continuous new mover discovery (even for drafts)
+        polling_enabled: targetingData.pollingEnabled !== false, // Default true
+        polling_frequency_hours: 0.5, // Poll every 30 minutes
+        last_polled_at: null // Will be set on first poll
       };
 
       const result = await campaignService.updateCampaign(campaignId, campaignUpdates);

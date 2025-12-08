@@ -65,67 +65,24 @@ const CampaignStep4 = () => {
         setValidatedZips(result.results);
 
         if (result.zipsWithData > 0) {
-          toast.success(`${result.zipsWithData} ZIP code${result.zipsWithData !== 1 ? 's' : ''} with data available!`, {
+          toast.success(`${result.zipsWithData} ZIP code${result.zipsWithData !== 1 ? 's' : ''} validated!`, {
             id: 'validate-zips',
             duration: 3000
           });
 
-          // Fetch and save new movers from Melissa API
-          toast.loading('Fetching new movers from Melissa API...', { id: 'fetch-movers' });
-
-          try {
-            const fetchResult = await newMoverService.fetchAndSave(parsed.zipCodes);
-
-            if (fetchResult.success && fetchResult.data && fetchResult.data.length > 0) {
-              const newMoverIds = fetchResult.data.map(mover => mover.id);
-
-              toast.success(`Fetched ${fetchResult.data.length} new mover${fetchResult.data.length !== 1 ? 's' : ''}!`, { id: 'fetch-movers' });
-
-              // Store complete targeting data for next step
-              sessionStorage.setItem('campaignTargetingData', JSON.stringify({
-                option: 'zip',
-                zipCodes: parsed.zipCodes,
-                validatedZips: result.results,
-                zipsWithData: result.zipsWithData,
-                totalZipCodes: result.totalZipCodes,
-                flatRate: result.flatRate,
-                newMoverIds: newMoverIds,
-                totalRecipients: fetchResult.data.length
-              }));
-            } else {
-              // No new movers found, store without new mover data
-              toast.warning('ZIP codes validated but no new movers found', { id: 'fetch-movers' });
-
-              sessionStorage.setItem('campaignTargetingData', JSON.stringify({
-                option: 'zip',
-                zipCodes: parsed.zipCodes,
-                validatedZips: result.results,
-                zipsWithData: result.zipsWithData,
-                totalZipCodes: result.totalZipCodes,
-                flatRate: result.flatRate,
-                newMoverIds: [],
-                totalRecipients: 0
-              }));
-            }
-          } catch (fetchError) {
-            console.error('Error fetching new movers:', fetchError);
-            toast.error(`Failed to fetch new movers: ${fetchError.message || 'Please try again'}`, {
-              id: 'fetch-movers',
-              duration: 4000
-            });
-
-            // Store data without new movers so user can continue
-            sessionStorage.setItem('campaignTargetingData', JSON.stringify({
-              option: 'zip',
-              zipCodes: parsed.zipCodes,
-              validatedZips: result.results,
-              zipsWithData: result.zipsWithData,
-              totalZipCodes: result.totalZipCodes,
-              flatRate: result.flatRate,
-              newMoverIds: [],
-              totalRecipients: 0
-            }));
-          }
+          // Store validated ZIP codes WITHOUT fetching Melissa data
+          // New movers will be discovered via polling after campaign activation
+          sessionStorage.setItem('campaignTargetingData', JSON.stringify({
+            option: 'zip',
+            zipCodes: parsed.zipCodes,
+            validatedZips: result.results,
+            zipsWithData: result.zipsWithData,
+            totalZipCodes: result.totalZipCodes,
+            flatRate: result.flatRate,
+            newMoverIds: [], // Empty - will be populated by polling
+            totalRecipients: 0, // Start with 0 - will increment as new movers are discovered
+            pollingEnabled: true // Enable polling for this campaign
+          }));
         } else {
           toast.error('No data available for these ZIP codes', { id: 'validate-zips' });
         }

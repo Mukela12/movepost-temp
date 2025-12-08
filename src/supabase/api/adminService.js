@@ -51,7 +51,7 @@ export const adminCampaignService = {
       }
 
       // Fetch all user profiles in one query to avoid N+1 problem
-      const userIds = [...new Set(data.map(c => c.user_id))];
+      const userIds = [...new Set(data.map(c => c.user_id).filter(Boolean))];
 
       const { data: allProfiles } = await supabase
         .from('profile')
@@ -525,7 +525,7 @@ export const adminActivityService = {
       }
 
       // Get all unique admin IDs
-      const adminIds = [...new Set(data.map(log => log.admin_id))];
+      const adminIds = [...new Set(data.map(log => log.admin_id).filter(Boolean))];
 
       // Fetch admin profiles in bulk
       const { data: adminProfiles } = await supabase
@@ -699,7 +699,7 @@ export const adminTransactionService = {
       // Manually join profile data
       if (transactions && transactions.length > 0) {
         // Get unique user IDs
-        const userIds = [...new Set(transactions.map(t => t.user_id))];
+        const userIds = [...new Set(transactions.map(t => t.user_id).filter(Boolean))];
 
         // Fetch profiles for those users
         const { data: profiles } = await supabase
@@ -831,6 +831,20 @@ export const adminTransactionService = {
 
       if (failedError) throw failedError;
 
+      // Get processing transactions count
+      let processingQuery = supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'processing');
+
+      if (isTestMode !== undefined) {
+        processingQuery = processingQuery.eq('is_test_mode', isTestMode);
+      }
+
+      const { count: processingCount, error: processingError } = await processingQuery;
+
+      if (processingError) throw processingError;
+
       // Calculate stats
       const totalRevenue = succeededTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount_dollars), 0);
       const transactionCount = succeededTransactions.length;
@@ -862,7 +876,10 @@ export const adminTransactionService = {
         stats: {
           totalRevenue: totalRevenue.toFixed(2),
           transactionCount,
+          successful_count: transactionCount,
           failedTransactionCount: failedCount || 0,
+          failed_count: failedCount || 0,
+          processing_count: processingCount || 0,
           averageTransactionAmount: averageTransactionAmount.toFixed(2),
           successRate: transactionCount > 0 ?
             ((transactionCount / (transactionCount + (failedCount || 0))) * 100).toFixed(2) :

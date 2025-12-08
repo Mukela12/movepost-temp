@@ -304,6 +304,24 @@ const AdminTransactions = () => {
         </motion.div>
       )}
 
+      {filters.isTestMode === false && (
+        <motion.div
+          className="admin-live-mode-banner"
+          style={{ backgroundColor: '#10b981', color: 'white', padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <TestTube size={20} />
+          <span>Showing LIVE MODE transactions only</span>
+          <button
+            onClick={() => handleFilterChange('isTestMode', undefined)}
+            style={{ marginLeft: 'auto', padding: '6px 12px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
+          >
+            Show All
+          </button>
+        </motion.div>
+      )}
+
       {/* Filters Panel */}
       {showFilters && (
         <motion.div

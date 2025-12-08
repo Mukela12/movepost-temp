@@ -20,14 +20,15 @@ Our Stripe integration uses the following pattern:
 - **SetupIntent** → Save payment method during onboarding (no charge)
 - **PaymentIntent** → Charge saved payment method when campaigns are approved
 - **Webhooks** → Handle async payment events (3D Secure, processing, failures)
-- **Daily Batch** → Process new mover additions via cron job
+- **Immediate Charging** → Charge users immediately when postcards are sent ($3.00 per postcard)
 
 ### Payment Flow
 1. User adds card during onboarding → `create-setup-intent` Edge Function
 2. Payment method saved to Stripe + database
-3. Admin approves campaign → `create-payment-intent` Edge Function
+3. Admin approves campaign → `create-payment-intent` Edge Function (initial charge)
 4. Stripe charges the saved payment method
 5. Webhook updates database with payment result
+6. Polling discovers new movers → Immediate charge via Stripe ($3.00 each)
 
 ---
 
@@ -321,20 +322,22 @@ Use these test cards to simulate different payment scenarios.
   - `create-payment-intent`
   - `confirm-payment`
   - `stripe-webhook`
-  - `process-daily-charges`
+  - `poll-melissa-new-movers`
 
 - [ ] **Cron Job Configured**
-  - Set up `process-daily-charges` to run daily at 2am UTC
+  - Set up `poll-melissa-new-movers` to run every 30 minutes
   - Verified in Supabase Dashboard → Edge Functions → Cron
+  - Confirmed immediate charging works during polling
 
 - [ ] **Testing Completed**
   - Tested complete onboarding flow
   - Tested campaign approval → billing
-  - Tested new mover additions → daily batch charging
+  - Tested new mover additions → immediate charging ($3.00 per postcard)
   - Tested failed payments and error handling
   - Tested refunds
   - Tested 3D Secure authentication
   - Tested admin transaction monitoring
+  - Verified transactions appear in real-time in admin dashboard
 
 - [ ] **Monitoring Setup**
   - Stripe Dashboard alerts configured
@@ -367,7 +370,7 @@ supabase functions deploy create-setup-intent
 supabase functions deploy create-payment-intent
 supabase functions deploy confirm-payment
 supabase functions deploy stripe-webhook
-supabase functions deploy process-daily-charges
+supabase functions deploy poll-melissa-new-movers
 
 # Build and deploy frontend
 npm run build
@@ -426,19 +429,29 @@ npm run build
 3. Verify `payment_action_url` is returned and displayed to user
 4. Test with 3D Secure test card: `4000 0027 6000 3184`
 
-### Daily Batch Charging Not Running
+### Immediate Charging Not Working
 
 **Symptoms:**
-- Pending charges accumulating in `pending_charges` table
-- New mover additions not being charged
+- New movers discovered but no charges created
+- Transactions not appearing in admin dashboard
+- New movers have `postcard_sent: true` but no `transaction_id`
 
 **Solutions:**
-1. Verify cron job is configured in Supabase Dashboard
-2. Check `process-daily-charges` Edge Function logs
-3. Verify scheduled time (should be 2am UTC)
-4. Manually invoke function to test:
+1. Verify Stripe API key is set in `poll-melissa-new-movers` Edge Function
+2. Check Edge Function logs for Stripe errors:
    ```bash
-   curl -X POST https://[PROJECT].supabase.co/functions/v1/process-daily-charges \
+   supabase functions logs poll-melissa-new-movers
+   ```
+3. Verify customer has valid payment method attached in Stripe Dashboard
+4. Check for failed transactions in database:
+   ```sql
+   SELECT * FROM transactions
+   WHERE status != 'succeeded'
+   ORDER BY created_at DESC LIMIT 10;
+   ```
+5. Manually trigger polling to test:
+   ```bash
+   curl -X POST https://[PROJECT].supabase.co/functions/v1/poll-melissa-new-movers \
      -H "Authorization: Bearer [ANON_KEY]"
    ```
 

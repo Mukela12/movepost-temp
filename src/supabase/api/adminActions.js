@@ -13,10 +13,7 @@ import { supabase } from '../integration/client';
  */
 export const approveCampaign = async (campaignId, adminId) => {
   try {
-    console.log('[Admin Actions] Approving campaign with billing:', campaignId);
-
-    // Import campaign service for billing
-    const { default: campaignService } = await import('./campaignService.js');
+    console.log('[Admin Actions] Approving campaign:', campaignId);
 
     // First, check if user has payment method
     const { data: campaign, error: campaignError } = await supabase
@@ -35,7 +32,7 @@ export const approveCampaign = async (campaignId, adminId) => {
       .from('customers')
       .select('id')
       .eq('user_id', campaign.user_id)
-      .single();
+      .maybeSingle();
 
     if (!customer) {
       return {
@@ -50,7 +47,7 @@ export const approveCampaign = async (campaignId, adminId) => {
       .select('id')
       .eq('customer_id', customer.id)
       .eq('is_default', true)
-      .single();
+      .maybeSingle();
 
     if (!paymentMethod) {
       return {
@@ -60,112 +57,52 @@ export const approveCampaign = async (campaignId, adminId) => {
       };
     }
 
-    // Calculate cost for confirmation
-    const postcardCount = campaign.postcards_sent || campaign.total_recipients || 0;
-    const estimatedCost = postcardCount * 3.00;
+    console.log(`[Admin Actions] Approving campaign: ${campaign.campaign_name}`);
 
-    console.log(`[Admin Actions] Campaign: ${campaign.campaign_name}`);
-    console.log(`[Admin Actions] Postcards: ${postcardCount}`);
-    console.log(`[Admin Actions] Estimated cost: $${estimatedCost.toFixed(2)}`);
-
-    // CHARGE THE CAMPAIGN
+    // Approve the campaign - NO CHARGE YET
+    // Postcards will be charged as they're sent (via polling → daily batch)
     try {
-      const chargeResult = await campaignService.chargeCampaignOnApproval(campaignId, adminId);
+      const approvedAt = new Date().toISOString();
 
-      console.log('[Admin Actions] Charge result:', chargeResult);
+      await supabase
+        .from('campaigns')
+        .update({
+          approval_status: 'approved',
+          status: 'active',
+          polling_enabled: true,
+          polling_frequency_hours: 0.5,
+          approved_at: approvedAt,
+          approved_by: adminId
+        })
+        .eq('id', campaignId);
 
-      if (chargeResult.success) {
-        if (chargeResult.status === 'succeeded') {
-          // Payment succeeded - campaign is approved and paid
-          await supabase
-            .from('campaigns')
-            .update({
-              approval_status: 'approved',
-              status: 'active'
-            })
-            .eq('id', campaignId);
+      // Log admin activity
+      await logAdminActivity(adminId, 'campaign_approved', 'campaign', campaignId, {
+        campaign_name: campaign.campaign_name,
+        approved_at: approvedAt
+      });
 
-          // Log admin activity
-          await logAdminActivity(adminId, 'campaign_approved', 'campaign', campaignId, {
-            campaign_name: campaign.campaign_name,
-            amount_charged: chargeResult.amount,
-            transaction_id: chargeResult.transactionId
-          });
+      return {
+        success: true,
+        message: `✅ Campaign approved successfully!\n\n` +
+                 `Polling enabled: Checks for new movers every 30 minutes\n` +
+                 `First poll will run within the next poll cycle\n` +
+                 `Postcards will be sent automatically via PostGrid\n` +
+                 `You'll be charged $3.00 immediately when each postcard is sent`,
+        campaign: campaign
+      };
 
-          return {
-            success: true,
-            message: `Campaign approved and charged $${chargeResult.amount.toFixed(2)}`,
-            campaign: campaign,
-            transaction: {
-              id: chargeResult.transactionId,
-              amount: chargeResult.amount,
-              status: 'succeeded'
-            }
-          };
-
-        } else if (chargeResult.status === 'requires_action') {
-          // Payment requires 3D Secure authentication
-          // Campaign stays in pending_review until user completes authentication
-
-          await logAdminActivity(adminId, 'campaign_approval_pending', 'campaign', campaignId, {
-            campaign_name: campaign.campaign_name,
-            reason: 'Payment requires 3D Secure authentication',
-            action_url: chargeResult.actionUrl
-          });
-
-          return {
-            success: true,
-            message: 'Payment requires authentication. User will be notified via email to complete 3D Secure.',
-            requiresAction: true,
-            actionUrl: chargeResult.actionUrl,
-            campaign: campaign
-          };
-
-        } else if (chargeResult.status === 'processing') {
-          // Payment is processing - webhook will update when complete
-
-          await logAdminActivity(adminId, 'campaign_approval_processing', 'campaign', campaignId, {
-            campaign_name: campaign.campaign_name,
-            transaction_id: chargeResult.transactionId
-          });
-
-          return {
-            success: true,
-            message: 'Payment is processing. Campaign will be automatically approved when payment completes.',
-            processing: true,
-            campaign: campaign
-          };
-
-        } else {
-          // Unknown status
-          throw new Error(chargeResult.message || 'Unknown payment status');
-        }
-
-      } else {
-        // Charge failed
-        throw new Error(chargeResult.error || 'Payment failed');
-      }
-
-    } catch (chargeError) {
-      // Payment failed - log error and return user-friendly message
-      console.error('[Admin Actions] Payment error:', chargeError);
+    } catch (approvalError) {
+      console.error('[Admin Actions] Approval error:', approvalError);
 
       await logAdminActivity(adminId, 'campaign_approval_failed', 'campaign', campaignId, {
         campaign_name: campaign.campaign_name,
-        error: chargeError.message,
-        reason: 'Payment failed'
+        error: approvalError.message
       });
-
-      // Get user-friendly error message
-      const userFriendlyError = chargeError.userFriendlyMessage ||
-        campaignService.getUserFriendlyPaymentError(chargeError.message) ||
-        chargeError.message;
 
       return {
         success: false,
-        error: userFriendlyError,
-        technicalError: chargeError.message,
-        paymentFailed: true
+        error: approvalError.message || 'Failed to approve campaign'
       };
     }
 

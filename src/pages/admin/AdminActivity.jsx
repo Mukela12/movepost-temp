@@ -14,7 +14,11 @@ import {
   Link as LinkIcon,
   User,
   Calendar,
-  Clock
+  Clock,
+  RefreshCw,
+  CreditCard,
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import { adminActivityService } from '../../supabase/api/adminService';
 import toast from 'react-hot-toast';
@@ -94,7 +98,15 @@ const AdminActivity = () => {
       campaign_deleted: <Trash2 size={20} />,
       provider_connected: <LinkIcon size={20} />,
       user_blocked: <Ban size={20} />,
-      user_unblocked: <CheckCircle size={20} />
+      user_unblocked: <CheckCircle size={20} />,
+      polling_completed: <RefreshCw size={20} />,
+      payment_method_added: <CreditCard size={20} />,
+      payment_method_failed: <AlertCircle size={20} />,
+      payment_method_default_changed: <CreditCard size={20} />,
+      payment_method_removed: <Trash2 size={20} />,
+      transaction_succeeded: <DollarSign size={20} />,
+      transaction_failed: <XCircle size={20} />,
+      transaction_refunded: <DollarSign size={20} />
     };
 
     return iconMap[actionType] || <ActivityIcon size={20} />;
@@ -109,7 +121,15 @@ const AdminActivity = () => {
       campaign_deleted: 'error',
       provider_connected: 'info',
       user_blocked: 'error',
-      user_unblocked: 'success'
+      user_unblocked: 'success',
+      polling_completed: 'info',
+      payment_method_added: 'success',
+      payment_method_failed: 'error',
+      payment_method_default_changed: 'info',
+      payment_method_removed: 'warning',
+      transaction_succeeded: 'success',
+      transaction_failed: 'error',
+      transaction_refunded: 'warning'
     };
 
     return colorMap[actionType] || 'default';
@@ -173,6 +193,22 @@ const AdminActivity = () => {
         return `Blocked user. Reason: ${metadata.reason || 'Not specified'}`;
       case 'user_unblocked':
         return `Unblocked user. Reason: ${metadata.unblock_reason || 'Not specified'}`;
+      case 'polling_completed':
+        return `Polling completed: ${metadata.campaigns_processed || 0} campaigns processed, ${metadata.new_movers_discovered || 0} new movers discovered, ${metadata.postcards_sent || 0} postcards sent${metadata.errors_count > 0 ? `, ${metadata.errors_count} errors` : ''}`;
+      case 'payment_method_added':
+        return `Added payment method: ${metadata.card_brand?.toUpperCase() || 'Card'} ending in ${metadata.card_last4 || '****'}${metadata.is_default ? ' (set as default)' : ''}`;
+      case 'payment_method_failed':
+        return `Failed to add payment method: ${metadata.error || 'Unknown error'}`;
+      case 'payment_method_default_changed':
+        return `Changed default payment method to: ${metadata.card_brand?.toUpperCase() || 'Card'} ending in ${metadata.card_last4 || '****'}`;
+      case 'payment_method_removed':
+        return `Removed payment method: ${metadata.card_brand?.toUpperCase() || 'Card'} ending in ${metadata.card_last4 || '****'}`;
+      case 'transaction_succeeded':
+        return `Payment successful: $${metadata.amount_dollars?.toFixed(2) || '0.00'} for ${metadata.billing_reason?.replace(/_/g, ' ') || 'campaign'}${metadata.new_mover_count ? ` (${metadata.new_mover_count} postcards)` : ''}. ${metadata.payment_method_brand?.toUpperCase() || 'Card'} ${metadata.payment_method_last4 ? `ending in ${metadata.payment_method_last4}` : ''}`;
+      case 'transaction_failed':
+        return `Payment failed: $${metadata.amount_dollars?.toFixed(2) || '0.00'} for ${metadata.billing_reason?.replace(/_/g, ' ') || 'campaign'}. Error: ${metadata.failure_message || metadata.failure_code || 'Unknown error'}`;
+      case 'transaction_refunded':
+        return `Refund processed: $${metadata.refund_amount_dollars?.toFixed(2) || '0.00'} ${metadata.refund_status === 'partially_refunded' ? '(partial)' : ''} for original payment of $${metadata.original_amount_dollars?.toFixed(2) || '0.00'}`;
       default:
         return formatActionType(log.action_type);
     }
@@ -196,7 +232,13 @@ const AdminActivity = () => {
     { value: 'campaign_resumed', label: 'Resumed' },
     { value: 'campaign_deleted', label: 'Deleted' },
     { value: 'user_blocked', label: 'User Blocked' },
-    { value: 'user_unblocked', label: 'User Unblocked' }
+    { value: 'user_unblocked', label: 'User Unblocked' },
+    { value: 'polling_completed', label: 'Polling' },
+    { value: 'payment_method_added', label: 'Payment Added' },
+    { value: 'payment_method_failed', label: 'Payment Failed' },
+    { value: 'transaction_succeeded', label: 'Payment Success' },
+    { value: 'transaction_failed', label: 'Payment Error' },
+    { value: 'transaction_refunded', label: 'Refunds' }
   ];
 
   return (
