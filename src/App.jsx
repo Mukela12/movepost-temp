@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import SignUp from './pages/auth/SignUp'
 import Login from './pages/auth/Login'
+import ResetPassword from './pages/auth/ResetPassword'
 import EmailVerification from './pages/auth/EmailVerification'
 import Onboarding from './pages/onboarding/Onboarding'
 import Dashboard from './pages/Dashboard'
@@ -62,6 +63,7 @@ function App() {
         {/* Public routes */}
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Email verification - requires authentication only */}
         <Route
