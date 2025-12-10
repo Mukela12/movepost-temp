@@ -2,6 +2,8 @@
 // Phase 2: Campaign approval, rejection, pause, delete, and provider connection
 
 import { supabase } from '../integration/client';
+import * as emailService from './emailService';
+import * as notificationService from './notificationService';
 
 // ============================================
 // CAMPAIGN ACTIONS
@@ -82,6 +84,37 @@ export const approveCampaign = async (campaignId, adminId) => {
         approved_at: approvedAt
       });
 
+      // Send email and notification to customer
+      try {
+        // Fetch user email
+        const { data: userProfile } = await supabase
+          .from('profile')
+          .select('email')
+          .eq('user_id', campaign.user_id)
+          .single();
+
+        if (userProfile?.email) {
+          // Send approval email
+          await emailService.sendCampaignApprovedEmail(userProfile.email, {
+            campaignName: campaign.campaign_name,
+            campaignId: campaignId,
+            approvedAt: approvedAt
+          });
+
+          // Create in-app notification
+          await notificationService.createNotification(
+            campaign.user_id,
+            'campaign_approved',
+            'Campaign Approved!',
+            `Your campaign "${campaign.campaign_name}" is now live and active.`,
+            `/campaign/${campaignId}/details`
+          );
+        }
+      } catch (notifError) {
+        console.error('Error sending approval notification:', notifError);
+        // Don't fail the approval if notification fails
+      }
+
       return {
         success: true,
         message: `✅ Campaign approved successfully!\n\n` +
@@ -148,6 +181,37 @@ export const rejectCampaign = async (campaignId, adminId, reason) => {
       reason
     });
 
+    // Send email and notification to customer
+    try {
+      // Fetch user email
+      const { data: userProfile } = await supabase
+        .from('profile')
+        .select('email')
+        .eq('user_id', data.user_id)
+        .single();
+
+      if (userProfile?.email) {
+        // Send rejection email
+        await emailService.sendCampaignRejectedEmail(userProfile.email, {
+          campaignName: data.campaign_name,
+          campaignId: campaignId,
+          rejectionReason: reason
+        });
+
+        // Create in-app notification
+        await notificationService.createNotification(
+          data.user_id,
+          'campaign_rejected',
+          'Campaign Needs Updates',
+          `Your campaign "${data.campaign_name}" requires changes: ${reason}`,
+          `/campaign/${campaignId}/edit`
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending rejection notification:', notifError);
+      // Don't fail the rejection if notification fails
+    }
+
     return { success: true, campaign: data };
   } catch (error) {
     console.error('Error in rejectCampaign:', error);
@@ -187,6 +251,37 @@ export const pauseCampaign = async (campaignId, adminId, reason) => {
       reason
     });
 
+    // Send email and notification to customer
+    try {
+      // Fetch user email
+      const { data: userProfile } = await supabase
+        .from('profile')
+        .select('email')
+        .eq('user_id', data.user_id)
+        .single();
+
+      if (userProfile?.email) {
+        // Send pause email
+        await emailService.sendCampaignPausedEmail(userProfile.email, {
+          campaignName: data.campaign_name,
+          campaignId: campaignId,
+          pauseReason: reason
+        });
+
+        // Create in-app notification
+        await notificationService.createNotification(
+          data.user_id,
+          'campaign_paused',
+          'Campaign Paused',
+          `Your campaign "${data.campaign_name}" has been paused.`,
+          `/campaign/${campaignId}/details`
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending pause notification:', notifError);
+      // Don't fail the pause if notification fails
+    }
+
     return { success: true, campaign: data };
   } catch (error) {
     console.error('Error in pauseCampaign:', error);
@@ -220,6 +315,36 @@ export const resumeCampaign = async (campaignId, adminId) => {
     await logAdminActivity(adminId, 'campaign_resumed', 'campaign', campaignId, {
       campaign_name: data.campaign_name
     });
+
+    // Send email and notification to customer
+    try {
+      // Fetch user email
+      const { data: userProfile } = await supabase
+        .from('profile')
+        .select('email')
+        .eq('user_id', data.user_id)
+        .single();
+
+      if (userProfile?.email) {
+        // Send resume email
+        await emailService.sendCampaignResumedEmail(userProfile.email, {
+          campaignName: data.campaign_name,
+          campaignId: campaignId
+        });
+
+        // Create in-app notification
+        await notificationService.createNotification(
+          data.user_id,
+          'campaign_resumed',
+          'Campaign Resumed',
+          `Your campaign "${data.campaign_name}" is active again.`,
+          `/campaign/${campaignId}/details`
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending resume notification:', notifError);
+      // Don't fail the resume if notification fails
+    }
 
     return { success: true, campaign: data };
   } catch (error) {

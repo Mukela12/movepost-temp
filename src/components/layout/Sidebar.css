@@ -12,7 +12,8 @@
   left: 0;
   top: 0;
   z-index: var(--z-fixed);
-  overflow-y: auto;
+  overflow-x: visible; /* Allow horizontal overflow for dropdowns */
+  overflow-y: auto; /* Keep vertical scroll */
   border-right: 1px solid var(--color-gray-200);
 }
 
@@ -21,6 +22,25 @@
   padding: var(--space-6);
   background-color: var(--color-gray-50);
   border-bottom: 1px solid var(--color-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative; /* Establish positioning context */
+  overflow: visible; /* Allow dropdown to extend beyond header */
+}
+
+.sidebar-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sidebar-logo:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
 }
 
 .logo-placeholder {

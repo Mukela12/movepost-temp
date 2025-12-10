@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -18,7 +18,11 @@ import {
   RefreshCw,
   CreditCard,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Target,
+  Users,
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { adminActivityService } from '../../supabase/api/adminService';
 import toast from 'react-hot-toast';
@@ -28,22 +32,52 @@ const AdminActivity = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const searchTimeoutRef = useRef(null);
+  const ITEMS_PER_PAGE = 50;
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // Reset to first page on search
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     loadActivityLogs();
-  }, [searchQuery, actionFilter]);
+  }, [debouncedSearch, actionFilter, currentPage]);
 
   const loadActivityLogs = async () => {
     try {
       setLoading(true);
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
       const result = await adminActivityService.getActivityLogs({
-        search: searchQuery,
-        action_type: actionFilter
+        search: debouncedSearch,
+        action_type: actionFilter !== 'all' ? actionFilter : undefined,
+        limit: ITEMS_PER_PAGE,
+        offset: offset
       });
 
       if (result.success) {
         setLogs(result.logs);
+        setTotalCount(result.total || result.logs.length);
       }
     } catch (error) {
       console.error('Error loading activity logs:', error);
@@ -53,40 +87,58 @@ const AdminActivity = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    if (logs.length === 0) {
-      toast.error('No data to export');
-      return;
+  const handleExportCSV = async () => {
+    try {
+      // Fetch ALL logs matching current filters (no pagination for export)
+      const result = await adminActivityService.getActivityLogs({
+        search: debouncedSearch,
+        action_type: actionFilter !== 'all' ? actionFilter : undefined,
+        // No limit/offset - get all matching records
+      });
+
+      if (!result.success || result.logs.length === 0) {
+        toast.error('No data to export');
+        return;
+      }
+
+      const exportLogs = result.logs;
+
+      toast.loading(`Exporting ${exportLogs.length} records...`);
+
+      // Prepare CSV data
+      const headers = ['Timestamp', 'Admin', 'Action', 'Target Type', 'Target ID', 'Details'];
+      const rows = exportLogs.map(log => [
+        formatDateTime(log.created_at),
+        log.admin_name,
+        formatActionType(log.action_type),
+        log.target_type,
+        log.target_id,
+        JSON.stringify(log.metadata || {})
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `activity_log_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.dismiss();
+      toast.success(`Exported ${exportLogs.length} records successfully`);
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Failed to export activity log');
+      console.error('Export error:', error);
     }
-
-    // Prepare CSV data
-    const headers = ['Timestamp', 'Admin', 'Action', 'Target Type', 'Target ID', 'Details'];
-    const rows = logs.map(log => [
-      formatDateTime(log.created_at),
-      log.admin_name,
-      formatActionType(log.action_type),
-      log.target_type,
-      log.target_id,
-      JSON.stringify(log.metadata || {})
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `activity_log_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast.success('Activity log exported successfully');
   };
 
   const getActionIcon = (actionType) => {
@@ -224,22 +276,128 @@ const AdminActivity = () => {
     return acc;
   }, {});
 
-  const actionTypes = [
-    { value: 'all', label: 'All Actions' },
-    { value: 'campaign_approved', label: 'Approved' },
-    { value: 'campaign_rejected', label: 'Rejected' },
-    { value: 'campaign_paused', label: 'Paused' },
-    { value: 'campaign_resumed', label: 'Resumed' },
-    { value: 'campaign_deleted', label: 'Deleted' },
-    { value: 'user_blocked', label: 'User Blocked' },
-    { value: 'user_unblocked', label: 'User Unblocked' },
-    { value: 'polling_completed', label: 'Polling' },
-    { value: 'payment_method_added', label: 'Payment Added' },
-    { value: 'payment_method_failed', label: 'Payment Failed' },
-    { value: 'transaction_succeeded', label: 'Payment Success' },
-    { value: 'transaction_failed', label: 'Payment Error' },
-    { value: 'transaction_refunded', label: 'Refunds' }
+  // Categorized filter structure
+  const filterCategories = [
+    {
+      id: 'all',
+      label: 'All Actions',
+      icon: <Filter size={18} />,
+      filters: [{ value: 'all', label: 'All Actions' }]
+    },
+    {
+      id: 'campaign',
+      label: 'Campaign Actions',
+      icon: <Target size={18} />,
+      filters: [
+        { value: 'campaign_approved', label: 'Approved' },
+        { value: 'campaign_rejected', label: 'Rejected' },
+        { value: 'campaign_paused', label: 'Paused' },
+        { value: 'campaign_resumed', label: 'Resumed' },
+        { value: 'campaign_deleted', label: 'Deleted' }
+      ]
+    },
+    {
+      id: 'user',
+      label: 'User Actions',
+      icon: <Users size={18} />,
+      filters: [
+        { value: 'user_blocked', label: 'Blocked' },
+        { value: 'user_unblocked', label: 'Unblocked' }
+      ]
+    },
+    {
+      id: 'payment',
+      label: 'Payment Actions',
+      icon: <CreditCard size={18} />,
+      filters: [
+        { value: 'payment_method_added', label: 'Payment Added' },
+        { value: 'payment_method_failed', label: 'Payment Failed' },
+        { value: 'transaction_succeeded', label: 'Payment Success' },
+        { value: 'transaction_failed', label: 'Payment Error' },
+        { value: 'transaction_refunded', label: 'Refunds' },
+        { value: 'polling_completed', label: 'Polling' }
+      ]
+    }
   ];
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setActionFilter('all');
+    setCategoryFilter('all');
+    setCurrentPage(1);
+    setOpenDropdown(null);
+  };
+
+  const handleCategoryClick = (categoryId) => {
+    if (categoryId === 'all') {
+      setActionFilter('all');
+      setCategoryFilter('all');
+      setCurrentPage(1);
+      setOpenDropdown(null);
+    } else {
+      setOpenDropdown(openDropdown === categoryId ? null : categoryId);
+    }
+  };
+
+  const handleActionFilterClick = (value, categoryId) => {
+    setActionFilter(value);
+    setCategoryFilter(categoryId);
+    setCurrentPage(1);
+    setOpenDropdown(null);
+  };
+
+  const getActiveFilterLabel = () => {
+    if (actionFilter === 'all') return 'All Actions';
+
+    for (const category of filterCategories) {
+      const filter = category.filters.find(f => f.value === actionFilter);
+      if (filter) {
+        return `${category.label}: ${filter.label}`;
+      }
+    }
+    return 'All Actions';
+  };
+
+  const hasActiveFilters = () => {
+    return searchQuery !== '' || actionFilter !== 'all';
+  };
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
 
   return (
     <div className="admin-activity">
@@ -257,28 +415,64 @@ const AdminActivity = () => {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Compact Toolbar with Filters */}
       <div className="admin-activity-filters">
-        <div className="admin-search-box">
-          <Search size={18} />
-          <input
-            type="text"
-            placeholder="Search activity logs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="admin-filters-left">
+          <div className="admin-search-box">
+            <Search size={18} />
+            <input
+              type="text"
+              placeholder="Search activity logs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-category-filters">
+            {filterCategories.map((category) => (
+              <div key={category.id} className="admin-category-filter-wrapper">
+                <button
+                  className={`admin-category-btn ${
+                    (category.id === 'all' && actionFilter === 'all') ||
+                    (category.id === categoryFilter && actionFilter !== 'all')
+                      ? 'active'
+                      : ''
+                  }`}
+                  onClick={() => handleCategoryClick(category.id)}
+                >
+                  {category.icon}
+                  <span>{category.label}</span>
+                  {category.id !== 'all' && <ChevronDown size={16} />}
+                </button>
+
+                {/* Dropdown Menu */}
+                {category.id !== 'all' && openDropdown === category.id && (
+                  <div className="admin-category-dropdown">
+                    {category.filters.map((filter) => (
+                      <button
+                        key={filter.value}
+                        className={`admin-dropdown-item ${
+                          actionFilter === filter.value ? 'active' : ''
+                        }`}
+                        onClick={() => handleActionFilterClick(filter.value, category.id)}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="admin-filter-tabs">
-          {actionTypes.map((type) => (
-            <button
-              key={type.value}
-              className={`admin-filter-tab ${actionFilter === type.value ? 'active' : ''}`}
-              onClick={() => setActionFilter(type.value)}
-            >
-              {type.label}
+        <div className="admin-filters-right">
+          {hasActiveFilters() && (
+            <button className="admin-clear-filters-btn" onClick={handleClearFilters}>
+              <X size={16} />
+              Clear Filters
             </button>
-          ))}
+          )}
         </div>
       </div>
 
@@ -297,60 +491,115 @@ const AdminActivity = () => {
             <p>Try adjusting your filters or search query</p>
           </div>
         ) : (
-          <div className="admin-activity-timeline">
-            {Object.entries(groupedLogs).map(([date, dateLogs]) => (
-              <div key={date} className="admin-activity-date-group">
-                <div className="admin-activity-date-header">
-                  <Calendar size={18} />
-                  <span>{date}</span>
-                </div>
+          <>
+            {/* Result Count */}
+            <div className="admin-activity-results-info">
+              <span className="results-count">
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-
+                {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount} results
+              </span>
+              {actionFilter !== 'all' && (
+                <span className="active-filter-label">
+                  {getActiveFilterLabel()}
+                </span>
+              )}
+            </div>
 
-                <div className="admin-activity-items">
-                  {dateLogs.map((log) => (
-                    <motion.div
-                      key={log.id}
-                      className={`admin-activity-item action-${getActionColor(log.action_type)}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                    >
-                      <div className="activity-item-icon">
-                        {getActionIcon(log.action_type)}
-                      </div>
+            <div className="admin-activity-timeline">
+              {Object.entries(groupedLogs).map(([date, dateLogs]) => (
+                <div key={date} className="admin-activity-date-group">
+                  <div className="admin-activity-date-header">
+                    <Calendar size={18} />
+                    <span>{date}</span>
+                  </div>
 
-                      <div className="activity-item-content">
-                        <div className="activity-item-header">
-                          <div className="activity-item-title">
-                            <span className="activity-action-type">
-                              {formatActionType(log.action_type)}
+                  <div className="admin-activity-items">
+                    {dateLogs.map((log) => (
+                      <motion.div
+                        key={log.id}
+                        className={`admin-activity-item action-${getActionColor(log.action_type)}`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                      >
+                        <div className="activity-item-icon">
+                          {getActionIcon(log.action_type)}
+                        </div>
+
+                        <div className="activity-item-content">
+                          <div className="activity-item-header">
+                            <div className="activity-item-title">
+                              <span className="activity-action-type">
+                                {formatActionType(log.action_type)}
+                              </span>
+                              <span className="activity-item-time">
+                                <Clock size={14} />
+                                {formatTime(log.created_at)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="activity-item-description">
+                            {getActionDetails(log)}
+                          </p>
+
+                          <div className="activity-item-meta">
+                            <span className="activity-meta-item">
+                              <User size={14} />
+                              {log.admin_name}
                             </span>
-                            <span className="activity-item-time">
-                              <Clock size={14} />
-                              {formatTime(log.created_at)}
+                            <span className="activity-meta-item activity-target">
+                              Target: {log.target_type} #{log.target_id}
                             </span>
                           </div>
                         </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-                        <p className="activity-item-description">
-                          {getActionDetails(log)}
-                        </p>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="admin-pagination">
+                <button
+                  className="admin-pagination-btn"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
 
-                        <div className="activity-item-meta">
-                          <span className="activity-meta-item">
-                            <User size={14} />
-                            {log.admin_name}
-                          </span>
-                          <span className="activity-meta-item activity-target">
-                            Target: {log.target_type} #{log.target_id}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
+                <div className="admin-pagination-numbers">
+                  {getPageNumbers().map((page, index) => (
+                    <React.Fragment key={index}>
+                      {page === '...' ? (
+                        <span className="admin-pagination-ellipsis">...</span>
+                      ) : (
+                        <button
+                          className={`admin-pagination-number ${
+                            currentPage === page ? 'active' : ''
+                          }`}
+                          onClick={() => handlePageChange(page)}
+                        >
+                          {page}
+                        </button>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
+
+                <button
+                  className="admin-pagination-btn"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -92,7 +92,12 @@ const AdminLayout = () => {
       {/* Top Bar */}
       <div className="admin-topbar">
         <div className="admin-topbar-brand">
-          <span>MovePost Admin</span>
+          <img
+            src="/movepost-logo.png"
+            alt="MovePost"
+            className="admin-logo"
+          />
+          <span>Admin</span>
         </div>
 
         <div className="admin-topbar-user">

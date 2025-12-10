@@ -34,10 +34,10 @@ const Login = () => {
   }, [searchParams]);
 
   const testimonial = {
-    text: "We've been using 0 to kick start every new project and can't imagine working without it. It's incredible.",
-    author: "Fleur Cook",
-    title: "Founder, Catalog",
-    company: "Web Design Agency"
+    text: "MovePost connects us with new homeowners right when they need our services. The targeting is incredibly precise and has transformed our customer acquisition strategy.",
+    author: "Sarah Mitchell",
+    title: "Owner",
+    company: "Elite Home Services"
   };
 
     const handleChange = (e) => {

@@ -4,7 +4,11 @@ const OnboardingSidebar = ({ steps, currentStep, onStepClick }) => {
   return (
     <div className="onboarding-sidebar">
       <div className="logo-section">
-        <div className="logo-placeholder">[Logo Placeholder]</div>
+        <img
+          src="/movepost-logo.png"
+          alt="MovePost"
+          className="onboarding-logo"
+        />
       </div>
       
       <div className="steps-list">

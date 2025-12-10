@@ -7,7 +7,44 @@ import { formatPrice } from '../../utils/pricing';
 import campaignService from '../../supabase/api/campaignService';
 import { paymentService } from '../../supabase/api/paymentService';
 import onboardingService from '../../supabase/api/onboardingService';
+import * as emailService from '../../supabase/api/emailService';
+import { supabase } from '../../supabase/integration/client';
 import toast from 'react-hot-toast';
+
+// Helper function to notify admins of new campaign
+const notifyAdminsOfNewCampaign = async (campaignName, campaignId, customerName, customerEmail) => {
+  try {
+    // Fetch all admin users
+    const { data: admins, error } = await supabase
+      .from('profile')
+      .select('email, full_name')
+      .in('role', ['admin', 'super_admin']);
+
+    if (error || !admins || admins.length === 0) {
+      console.warn('No admins found to notify:', error);
+      return;
+    }
+
+    // Send email to each admin
+    for (const admin of admins) {
+      try {
+        await emailService.sendAdminNewCampaignEmail(admin.email, {
+          campaignName,
+          campaignId,
+          customerName,
+          customerEmail
+        });
+        console.log(`✅ Admin notification sent to ${admin.email}`);
+      } catch (emailError) {
+        console.error(`Failed to send admin email to ${admin.email}:`, emailError);
+        // Continue to next admin even if one fails
+      }
+    }
+  } catch (error) {
+    console.error('Error notifying admins:', error);
+    // Don't throw - we don't want to fail campaign creation if admin notification fails
+  }
+};
 
 const OnboardingStep6 = () => {
   const navigate = useNavigate();
@@ -120,6 +157,14 @@ const OnboardingStep6 = () => {
 
       console.log('Campaign activated:', updateResult.campaign);
 
+      // Notify admins of new campaign
+      await notifyAdminsOfNewCampaign(
+        campaignData.campaign_name,
+        campaignId,
+        user?.name || user?.email || 'User',
+        user?.email || 'Unknown'
+      );
+
       // Mark onboarding as complete
       await onboardingService.completeOnboarding(campaignId);
       console.log('Onboarding marked as complete!');
@@ -178,6 +223,14 @@ const OnboardingStep6 = () => {
       const result = await campaignService.updateCampaign(campaignId, campaignData);
 
       if (result.success) {
+        // Notify admins of new campaign (even if draft)
+        await notifyAdminsOfNewCampaign(
+          campaignData.campaign_name,
+          campaignId,
+          user?.name || user?.email || 'User',
+          user?.email || 'Unknown'
+        );
+
         // Mark onboarding as complete even for draft campaigns
         await onboardingService.completeOnboarding(campaignId);
         console.log('Onboarding marked as complete (draft campaign)!');

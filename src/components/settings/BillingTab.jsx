@@ -11,7 +11,7 @@ import './BillingTab.css';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const BillingTab = () => {
+const BillingTab = ({ activeTab }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [zipAggregation, setZipAggregation] = useState(null);
@@ -31,8 +31,14 @@ const BillingTab = () => {
 
   useEffect(() => {
     loadZipCodeAggregation();
-    loadPaymentMethods();
   }, []);
+
+  // Refresh payment methods when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'Billing') {
+      loadPaymentMethods();
+    }
+  }, [activeTab]);
 
   const loadPaymentMethods = async () => {
     try {
@@ -246,7 +252,7 @@ const BillingTab = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Plus size={18} />
+              <Plus size={18} strokeWidth={2.5} />
               Add Card
             </motion.button>
           )}
@@ -270,7 +276,7 @@ const BillingTab = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Plus size={18} />
+                  <Plus size={18} strokeWidth={2.5} />
                   Add Payment Method
                 </motion.button>
               </div>

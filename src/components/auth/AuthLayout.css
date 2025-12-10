@@ -9,7 +9,7 @@
 .auth-left {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 2rem;
   background-color: #FFFFFF;
@@ -22,6 +22,7 @@
   width: 100%;
   max-width: 400px;
   padding: 2rem 0;
+  padding-top: max(2rem, 10vh);
   /* Ensure content is always visible */
   min-height: min-content;
 }
@@ -218,7 +219,7 @@
 }
 
 /* Short screens (vertical space constraint) - applies across all widths */
-@media (max-height: 700px) {
+@media (max-height: 900px) {
   .auth-left {
     padding-top: 1rem;
     padding-bottom: 1rem;

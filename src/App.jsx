@@ -5,6 +5,7 @@ import SignUp from './pages/auth/SignUp'
 import Login from './pages/auth/Login'
 import ResetPassword from './pages/auth/ResetPassword'
 import EmailVerification from './pages/auth/EmailVerification'
+import OAuthCallback from './pages/auth/OAuthCallback'
 import Onboarding from './pages/onboarding/Onboarding'
 import Dashboard from './pages/Dashboard'
 import CreateCampaign from './pages/CreateCampaign'
@@ -24,6 +25,7 @@ import CreateBlast from './pages/CreateBlast'
 import History from './pages/History'
 import Settings from './pages/Settings'
 import Profile from './pages/Profile'
+import Notifications from './pages/Notifications'
 import AdminLogin from './pages/admin/AdminLogin'
 import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -64,6 +66,7 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
 
         {/* Email verification - requires authentication only */}
         <Route
@@ -232,6 +235,14 @@ function App() {
           element={
             <ProtectedRoute requireEmailVerification requireOnboarding>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute requireEmailVerification requireOnboarding>
+              <Notifications />
             </ProtectedRoute>
           }
         />

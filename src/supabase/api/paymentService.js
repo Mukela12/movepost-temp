@@ -5,6 +5,37 @@ import Stripe from "stripe";
 const stripekey = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY);
 
 export const paymentService = {
+  /**
+   * Create a customer record in Stripe and database (lightweight, no payment intent)
+   * This is faster than createSetupIntent and should be used when only customer creation is needed
+   * @returns {Promise<Object>} Customer data (customerId, stripeCustomerId)
+   */
+  async createCustomerRecord() {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const { data: response, error } = await supabase.functions.invoke('create-customer-record', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('[paymentService] Error creating customer record:', error);
+        throw error;
+      }
+
+      return response;
+    } catch (err) {
+      console.error('[paymentService] Failed to create customer record:', err);
+      throw new Error('Failed to create customer record: ' + err.message);
+    }
+  },
+
   async createSetupIntent(email) {
     const { data: { session } } = await supabase.auth.getSession();
 

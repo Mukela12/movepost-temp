@@ -489,32 +489,56 @@ export const adminActivityService = {
   // Get all activity logs with filters
   getActivityLogs: async (filters = {}) => {
     try {
+      // Build base query for counting
+      let countQuery = supabase
+        .from('admin_activity_logs')
+        .select('*', { count: 'exact', head: false });
+
+      // Build query for fetching data
       let query = supabase
         .from('admin_activity_logs')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Apply filters
+      // Apply filters to both queries
       if (filters.action_type && filters.action_type !== 'all') {
         query = query.eq('action_type', filters.action_type);
+        countQuery = countQuery.eq('action_type', filters.action_type);
       }
 
       if (filters.admin_id) {
         query = query.eq('admin_id', filters.admin_id);
+        countQuery = countQuery.eq('admin_id', filters.admin_id);
       }
 
       if (filters.date_from) {
         query = query.gte('created_at', filters.date_from);
+        countQuery = countQuery.gte('created_at', filters.date_from);
       }
 
       if (filters.date_to) {
         query = query.lte('created_at', filters.date_to);
+        countQuery = countQuery.lte('created_at', filters.date_to);
       }
 
-      // Apply search
+      // Get total count first (before pagination)
+      const { count, error: countError } = await countQuery;
+
+      if (countError) {
+        console.error('Error counting activity logs:', countError);
+      }
+
+      // Apply search (simplified for now, will be expanded with join)
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         query = query.or(`action_type.ilike.%${searchLower}%,target_type.ilike.%${searchLower}%`);
+      }
+
+      // Apply pagination
+      if (filters.offset !== undefined) {
+        query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+      } else if (filters.limit) {
+        query = query.limit(filters.limit);
       }
 
       const { data, error } = await query;
@@ -550,10 +574,24 @@ export const adminActivityService = {
         };
       });
 
+      // If search filter is applied, filter in memory for admin names (temporary solution)
+      let filteredLogs = logsWithAdminInfo;
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredLogs = logsWithAdminInfo.filter(log => {
+          return (
+            log.action_type?.toLowerCase().includes(searchLower) ||
+            log.target_type?.toLowerCase().includes(searchLower) ||
+            log.admin_name?.toLowerCase().includes(searchLower) ||
+            log.admin_email?.toLowerCase().includes(searchLower)
+          );
+        });
+      }
+
       return {
         success: true,
-        logs: logsWithAdminInfo,
-        total: logsWithAdminInfo.length
+        logs: filteredLogs,
+        total: count || filteredLogs.length
       };
     } catch (error) {
       console.error('Error in getActivityLogs:', error);

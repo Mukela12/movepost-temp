@@ -214,12 +214,16 @@ html, body, #root {
   transform: translateY(-1px);
 }
 
-.continue-button:disabled {
-  background-color: var(--color-gray-300);
-  color: var(--color-gray-500);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+/* Use button element selector for maximum specificity to override generic Button.css */
+button.continue-button:disabled,
+button.continue-button[disabled] {
+  background-color: #D1D5DB !important; /* Medium gray background for better contrast */
+  color: #111827 !important; /* Near black text - highly visible */
+  opacity: 1 !important; /* Override any inherited opacity from Button.css */
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
 }
 
 /* ========================
@@ -1104,12 +1108,16 @@ html, body, #root {
   box-shadow: 0 4px 12px rgba(32, 178, 170, 0.25);
 }
 
-.save-continue-button:disabled {
-  background-color: var(--color-gray-300);
-  color: var(--color-gray-500);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+/* Use button element selector for maximum specificity to override generic Button.css */
+button.save-continue-button:disabled,
+button.save-continue-button[disabled] {
+  background-color: #D1D5DB !important; /* Medium gray background for better contrast */
+  color: #111827 !important; /* Near black text - highly visible */
+  opacity: 1 !important; /* Override any inherited opacity from Button.css */
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
 }
 
 /* ========================

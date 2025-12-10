@@ -313,7 +313,7 @@ async function handlePaymentFailed(
         console.log(`✅ Campaign ${campaignId} marked as payment failed`)
       }
 
-      // Get user email for notification
+      // Get user email and campaign for notification
       const { data: user } = await supabase
         .from('profile')
         .select('email, full_name')
@@ -321,11 +321,43 @@ async function handlePaymentFailed(
         .single()
 
       if (user) {
-        console.log(`📧 Should send payment failure notification to: ${user.email}`)
-        // TODO: Implement email notification
-        // Example: Send email via Supabase Auth or SendGrid
-        // - Subject: "Payment Failed for Campaign"
-        // - Body: Include failure reason and link to update payment method
+        console.log(`📧 Sending payment failure notification to: ${user.email}`)
+
+        // Get campaign details
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('campaign_name')
+          .eq('id', campaignId)
+          .single()
+
+        // Send payment failed email
+        try {
+          const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              to: user.email,
+              subject: 'Payment Failed - Action Required',
+              html: getPaymentFailedEmailTemplate(
+                user.full_name || user.email,
+                campaign?.campaign_name || 'your campaign',
+                failureMessage || 'Your payment could not be processed.',
+                campaignId
+              )
+            })
+          })
+
+          if (!emailResponse.ok) {
+            console.error('Failed to send payment failed email:', await emailResponse.text())
+          } else {
+            console.log('✅ Payment failed email sent successfully')
+          }
+        } catch (emailError: any) {
+          console.error('Error sending payment failed email:', emailError.message)
+        }
       }
     }
 
@@ -395,7 +427,7 @@ async function handleRequiresAction(
         console.log(`✅ Campaign ${campaignId} marked as requiring action`)
       }
 
-      // Get user email for notification
+      // Get user email and campaign for notification
       const { data: user } = await supabase
         .from('profile')
         .select('email, full_name')
@@ -403,11 +435,43 @@ async function handleRequiresAction(
         .single()
 
       if (user && actionUrl) {
-        console.log(`📧 Should send 3D Secure notification to: ${user.email}`)
+        console.log(`📧 Sending 3D Secure notification to: ${user.email}`)
         console.log(`🔗 Action URL: ${actionUrl}`)
-        // TODO: Implement email notification
-        // - Subject: "Action Required: Complete Payment Authentication"
-        // - Body: Include link to complete 3D Secure authentication
+
+        // Get campaign details
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('campaign_name')
+          .eq('id', campaignId)
+          .single()
+
+        // Send 3D Secure email
+        try {
+          const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              to: user.email,
+              subject: 'Action Required: Complete Payment Authentication',
+              html: getPaymentRequiresActionEmailTemplate(
+                user.full_name || user.email,
+                campaign?.campaign_name || 'your campaign',
+                actionUrl
+              )
+            })
+          })
+
+          if (!emailResponse.ok) {
+            console.error('Failed to send 3D Secure email:', await emailResponse.text())
+          } else {
+            console.log('✅ 3D Secure email sent successfully')
+          }
+        } catch (emailError: any) {
+          console.error('Error sending 3D Secure email:', emailError.message)
+        }
       }
     }
 
@@ -536,4 +600,135 @@ async function handlePaymentMethodDetached(
   // This is just for logging/audit purposes
 
   // You could implement additional cleanup or logging here
+}
+
+// ============================================================================
+// EMAIL TEMPLATES
+// ============================================================================
+
+/**
+ * Email template for payment failed
+ */
+function getPaymentFailedEmailTemplate(
+  userName: string,
+  campaignName: string,
+  failureReason: string,
+  campaignId: string
+): string {
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:5174'
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 30px; text-align: center; }
+          .logo { width: 160px; height: auto; margin-bottom: 20px; }
+          .header-text { color: white; font-size: 24px; font-weight: 600; margin: 0; }
+          .content { padding: 40px 30px; }
+          .card { background: #fee2e2; border-left: 4px solid #dc2626; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .card-title { font-size: 18px; font-weight: 600; color: #991b1b; margin: 0 0 10px 0; }
+          .card-text { color: #7f1d1d; margin: 0; font-size: 14px; }
+          .greeting { font-size: 16px; margin-bottom: 20px; color: #333; }
+          .message { color: #666; line-height: 1.8; margin: 20px 0; }
+          .cta-button { display: inline-block; background: #dc2626; color: white !important; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; transition: background 0.3s; }
+          .cta-button:hover { background: #b91c1c; }
+          .footer { background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-text">Payment Failed</div>
+          </div>
+          <div class="content">
+            <div class="greeting">Hi ${userName},</div>
+            <div class="message">
+              We attempted to process your payment for <strong>${campaignName}</strong>, but it was unsuccessful.
+            </div>
+            <div class="card">
+              <div class="card-title">Failure Reason:</div>
+              <div class="card-text">${failureReason}</div>
+            </div>
+            <div class="message">
+              To continue with your campaign, please update your payment method or try again.
+            </div>
+            <a href="${frontendUrl}/settings?tab=billing" class="cta-button">Update Payment Method</a>
+            <div class="message" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280;">
+              If you need assistance, please contact our support team.
+            </div>
+          </div>
+          <div class="footer">
+            © ${new Date().getFullYear()} MovePost. All rights reserved.
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+}
+
+/**
+ * Email template for payment requires action (3D Secure)
+ */
+function getPaymentRequiresActionEmailTemplate(
+  userName: string,
+  campaignName: string,
+  actionUrl: string
+): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 40px 30px; text-align: center; }
+          .logo { width: 160px; height: auto; margin-bottom: 20px; }
+          .header-text { color: white; font-size: 24px; font-weight: 600; margin: 0; }
+          .content { padding: 40px 30px; }
+          .card { background: #dbeafe; border-left: 4px solid #2563eb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .card-title { font-size: 18px; font-weight: 600; color: #1e40af; margin: 0 0 10px 0; }
+          .card-text { color: #1e3a8a; margin: 0; font-size: 14px; }
+          .greeting { font-size: 16px; margin-bottom: 20px; color: #333; }
+          .message { color: #666; line-height: 1.8; margin: 20px 0; }
+          .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; transition: background 0.3s; }
+          .cta-button:hover { background: #1d4ed8; }
+          .footer { background: #f9fafb; padding: 30px; text-align: center; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="header-text">Action Required</div>
+          </div>
+          <div class="content">
+            <div class="greeting">Hi ${userName},</div>
+            <div class="message">
+              Your payment for <strong>${campaignName}</strong> requires additional authentication to complete the transaction.
+            </div>
+            <div class="card">
+              <div class="card-title">🔐 3D Secure Authentication</div>
+              <div class="card-text">Your bank requires you to verify this payment for security purposes.</div>
+            </div>
+            <div class="message">
+              Please click the button below to complete the authentication process:
+            </div>
+            <a href="${actionUrl}" class="cta-button">Complete Authentication</a>
+            <div class="message" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280;">
+              This is a security measure required by your bank to protect your card from unauthorized use.
+            </div>
+          </div>
+          <div class="footer">
+            © ${new Date().getFullYear()} MovePost. All rights reserved.
+          </div>
+        </div>
+      </body>
+    </html>
+  `
 }

@@ -55,14 +55,7 @@
 }
 
 .plan-status {
-  width: 40px;
-  height: 40px;
-  background-color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: none;
 }
 
 .plan-details {
@@ -363,22 +356,6 @@
   background-color: #F9FAFB;
 }
 
-.add-payment-btn {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0;
-  background-color: transparent;
-  border: none;
-  font-size: 0.875rem;
-  color: #6B7280;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.add-payment-btn:hover {
-  color: #111827;
-}
-
 /* Billing Address */
 .billing-address {
   margin-top: 2rem;
@@ -549,6 +526,12 @@
   transition: all 0.2s ease;
 }
 
+.add-payment-btn svg {
+  flex-shrink: 0;
+  color: white !important;
+  stroke: white !important;
+}
+
 .add-payment-btn:hover {
   background: #17a097;
   box-shadow: 0 4px 12px rgba(32, 178, 170, 0.3);
@@ -620,6 +603,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.add-first-payment-btn svg {
+  flex-shrink: 0;
+  color: white !important;
+  stroke: white !important;
 }
 
 .add-first-payment-btn:hover {

@@ -2,6 +2,8 @@
 // Phase 2: Real database operations for user management
 
 import { supabase } from '../integration/client';
+import * as emailService from './emailService';
+import * as notificationService from './notificationService';
 
 // ============================================
 // USER ACTIONS
@@ -49,6 +51,28 @@ export const blockUser = async (userId, adminId, reason) => {
       reason
     });
 
+    // Send email and notification to user
+    try {
+      if (data?.email) {
+        // Send block email
+        await emailService.sendUserBlockedEmail(data.email, {
+          blockReason: reason
+        });
+
+        // Create in-app notification
+        await notificationService.createNotification(
+          userId,
+          'user_blocked',
+          'Account Restricted',
+          `Your account has been restricted. Reason: ${reason}`,
+          null
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending block notification:', notifError);
+      // Don't fail the block if notification fails
+    }
+
     return { success: true, user: data };
   } catch (error) {
     console.error('Error in blockUser:', error);
@@ -95,6 +119,26 @@ export const unblockUser = async (userId, adminId, unblockReason = 'Unblocked by
     await logAdminActivity(adminId, 'user_unblocked', 'user', userId, {
       unblock_reason: unblockReason
     });
+
+    // Send email and notification to user
+    try {
+      if (data?.email) {
+        // Send unblock email
+        await emailService.sendUserUnblockedEmail(data.email);
+
+        // Create in-app notification
+        await notificationService.createNotification(
+          userId,
+          'user_unblocked',
+          'Account Restored',
+          'Your account has been restored and you now have full access.',
+          '/dashboard'
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending unblock notification:', notifError);
+      // Don't fail the unblock if notification fails
+    }
 
     return { success: true, user: data };
   } catch (error) {

@@ -7,6 +7,7 @@ import brandfetchService from '../../supabase/api/brandFetchService';
 import supabaseCompanyService from '../../supabase/api/companyService';
 import campaignService from '../../supabase/api/campaignService';
 import onboardingService from '../../supabase/api/onboardingService';
+import { paymentService } from '../../supabase/api/paymentService';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -170,10 +171,21 @@ const OnboardingStep1 = () => {
 
       console.log('✅ Campaign created with ID:', draftCampaign.id);
 
-      // Step 5: Mark step 1 as complete
+      // Step 5: Ensure customer record exists (fallback if trigger didn't work)
+      try {
+        console.log('[OnboardingStep1] Creating customer record (fallback)...');
+        await paymentService.createCustomerRecord();
+        console.log('[OnboardingStep1] ✅ Customer record created successfully');
+      } catch (customerError) {
+        // Don't block onboarding if this fails - user can still proceed
+        // Customer will be created in Step 5 if needed
+        console.warn('[OnboardingStep1] Customer creation failed (will retry later):', customerError);
+      }
+
+      // Step 6: Mark step 1 as complete
       await onboardingService.markStepComplete(1);
 
-      // Step 6: Navigate to next step
+      // Step 7: Navigate to next step
       navigate('/onboarding/step2');
       
     } catch (error) {

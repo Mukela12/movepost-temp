@@ -2,37 +2,66 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.logo-placeholder {
-  background-color: #475569;
-  color: white;
-  padding: 0.625rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: all 0.2s;
+.logo-image {
+  width: auto;
+  height: 32px;
+  object-fit: contain;
+  transition: all 0.2s ease;
 }
 
-/* Logo Variants */
-.logo-container.auth .logo-placeholder {
-  background-color: #475569;
-  font-size: 0.875rem;
-  padding: 0.625rem 1rem;
+/* Size Variants */
+.logo-container.small .logo-image {
+  height: 24px;
 }
 
-.logo-container.sidebar .logo-placeholder {
-  background-color: #475569;
+.logo-container.default .logo-image {
+  height: 32px;
 }
 
-.logo-container.large .logo-placeholder {
-  font-size: 1.125rem;
-  padding: 0.875rem 1.5rem;
+.logo-container.medium .logo-image {
+  height: 40px;
+}
+
+.logo-container.large .logo-image {
+  height: 48px;
+}
+
+.logo-container.xlarge .logo-image {
+  height: 64px;
+}
+
+/* Context Variants */
+.logo-container.auth .logo-image {
+  height: 40px;
+}
+
+.logo-container.sidebar .logo-image {
+  height: 36px;
 }
 
 /* Hover Effects */
-.logo-container:not(.no-hover) .logo-placeholder:hover {
+.logo-container:not(.no-hover):hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logo-container:not(.no-hover):hover .logo-image {
+  filter: brightness(1.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .logo-image {
+    height: 28px;
+  }
+
+  .logo-container.large .logo-image {
+    height: 40px;
+  }
+
+  .logo-container.xlarge .logo-image {
+    height: 48px;
+  }
 }

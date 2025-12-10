@@ -42,6 +42,18 @@
   cursor: default;
 }
 
+.admin-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  transition: all 0.2s ease;
+}
+
+.admin-logo:hover {
+  transform: scale(1.05);
+  filter: brightness(1.05);
+}
+
 .admin-topbar-brand svg {
   color: var(--admin-primary);
   flex-shrink: 0;
@@ -69,12 +81,12 @@
 }
 
 .admin-user-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--admin-text-primary);
   line-height: 1.4;
   letter-spacing: -0.01em;
-  max-width: 200px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

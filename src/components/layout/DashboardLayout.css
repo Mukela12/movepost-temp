@@ -17,6 +17,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+  z-index: 1; /* Keep below sidebar (z-index: 30) and its children */
 }
 
 /* Responsive Layout */

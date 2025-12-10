@@ -257,15 +257,13 @@ const AdminUsers = () => {
                       {user.full_name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
 
-                    {/* User Details - Grid Column 2 */}
-                    <div className="admin-user-info">
-                      <div className="admin-user-header-row">
-                        <div className="admin-user-details">
-                          <h3 className="admin-user-name">{user.full_name}</h3>
-                          <span className="admin-user-email">{user.email}</span>
-                        </div>
+                    {/* User Content */}
+                    <div className="admin-user-content">
+                      <div className="admin-user-header">
+                        <h3 className="admin-user-name">{user.full_name}</h3>
                         {getStatusBadge(user)}
                       </div>
+                      <span className="admin-user-email">{user.email}</span>
 
                       <div className="admin-user-stats">
                         <div className="admin-user-stat">

@@ -41,6 +41,21 @@
 
 .logo-section {
   margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.onboarding-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  transition: all 0.2s ease;
+}
+
+.onboarding-logo:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
 }
 
 .logo-placeholder {

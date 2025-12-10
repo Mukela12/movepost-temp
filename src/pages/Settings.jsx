@@ -11,7 +11,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Profile');
   
-  const tabs = ['Profile', 'Business', 'Preferences', 'Billing'];
+  const tabs = ['Profile', 'Business', 'Billing'];
 
   const handleSaveChanges = (data) => {
     console.log('Saving changes...', data);
@@ -48,21 +48,14 @@ const Settings = () => {
             )}
             
             {activeTab === 'Business' && (
-              <BusinessTab 
+              <BusinessTab
                 onSave={handleSaveChanges}
                 onCancel={handleCancel}
               />
             )}
 
-            {activeTab === 'Preferences' && (
-              <div className="placeholder-content">
-                <h3>{activeTab}</h3>
-                <p>{activeTab} settings coming soon...</p>
-              </div>
-            )}
-            
             {activeTab === 'Billing' && (
-              <BillingTab />
+              <BillingTab activeTab={activeTab} />
             )}
           </div>
         </div>

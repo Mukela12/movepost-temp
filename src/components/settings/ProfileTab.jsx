@@ -1,17 +1,70 @@
-import React, { useState } from 'react';
-import { Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Loader } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../supabase/integration/client';
+import toast from 'react-hot-toast';
 import './ProfileTab.css';
 
 const ProfileTab = ({ onSave, onCancel }) => {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: 'Oliva',
-    lastName: 'Rhye',
-    email: 'olivia@untitledui.com',
+    firstName: '',
+    lastName: '',
+    email: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
   const [showDangerWarning, setShowDangerWarning] = useState(true);
+
+  // Load user data on mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+
+        // Get user profile from profile table
+        const { data: profile, error: profileError } = await supabase
+          .from('profile')
+          .select('full_name, email')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('[ProfileTab] Error loading profile:', profileError);
+        }
+
+        // Parse full name into first and last name
+        const fullName = profile?.full_name || user.user_metadata?.full_name || '';
+        const nameParts = fullName.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        setFormData({
+          firstName,
+          lastName,
+          email: user.email || '',
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } catch (error) {
+        console.error('[ProfileTab] Failed to load user data:', error);
+        toast.error('Failed to load profile data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -20,9 +73,116 @@ const ProfileTab = ({ onSave, onCancel }) => {
     }));
   };
 
+  const handleSaveChanges = async () => {
+    if (!user) {
+      toast.error('No user logged in');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Validate name fields
+      if (!formData.firstName.trim()) {
+        toast.error('First name is required');
+        return;
+      }
+
+      // Validate password change if attempted
+      if (formData.newPassword || formData.confirmPassword || formData.currentPassword) {
+        if (!formData.currentPassword) {
+          toast.error('Current password is required to change password');
+          return;
+        }
+        if (formData.newPassword.length < 8) {
+          toast.error('New password must be at least 8 characters');
+          return;
+        }
+        if (formData.newPassword !== formData.confirmPassword) {
+          toast.error('New passwords do not match');
+          return;
+        }
+      }
+
+      // Update full name in profile table
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      const { error: profileError } = await supabase
+        .from('profile')
+        .update({
+          full_name: fullName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (profileError) {
+        console.error('[ProfileTab] Error updating profile:', profileError);
+        throw new Error('Failed to update profile');
+      }
+
+      // Update password if provided
+      if (formData.newPassword && formData.currentPassword) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: formData.newPassword
+        });
+
+        if (passwordError) {
+          console.error('[ProfileTab] Error updating password:', passwordError);
+          throw new Error('Failed to update password: ' + passwordError.message);
+        }
+
+        // Clear password fields after successful update
+        setFormData(prev => ({
+          ...prev,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        }));
+
+        toast.success('Profile and password updated successfully!');
+      } else {
+        toast.success('Profile updated successfully!');
+      }
+
+      // Call parent onSave if provided
+      if (onSave) {
+        onSave(formData);
+      }
+    } catch (error) {
+      console.error('[ProfileTab] Save error:', error);
+      toast.error(error.message || 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDeleteAccount = () => {
     console.log('Delete account clicked...');
+    toast('Account deletion feature coming soon', { icon: 'ℹ️' });
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="profile-tab">
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4rem 2rem',
+          gap: '1rem'
+        }}>
+          <Loader className="spinner-icon" size={40} style={{ animation: 'spin 1s linear infinite' }} />
+          <p style={{ color: '#718096', fontSize: '14px' }}>Loading profile data...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-tab">
@@ -156,11 +316,26 @@ const ProfileTab = ({ onSave, onCancel }) => {
 
       {/* Footer Actions */}
       <div className="settings-footer">
-        <button className="cancel-button" onClick={onCancel}>
+        <button
+          className="cancel-button"
+          onClick={onCancel}
+          disabled={isSaving}
+        >
           Cancel
         </button>
-        <button className="save-button" onClick={() => onSave(formData)}>
-          Save Changes
+        <button
+          className="save-button"
+          onClick={handleSaveChanges}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader size={16} style={{ animation: 'spin 1s linear infinite', marginRight: '8px' }} />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
         </button>
       </div>
     </div>

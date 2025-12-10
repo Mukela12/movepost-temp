@@ -22,10 +22,10 @@ const SignUp = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const testimonial = {
-    text: "We've been using 0 to kick start every new project and can't imagine working without it. It's incredible.",
-    author: "Caitlyn King",
-    title: "Lead Designer, Layers",
-    company: "Web Development Agency"
+    text: "Within our first month using MovePost, we connected with 40+ new homeowners in our area. The precision targeting means we're reaching people exactly when they need landscaping services.",
+    author: "Marcus Rodriguez",
+    title: "Founder",
+    company: "GreenScape Landscaping"
   };
 
    const handleChange = (e) => {
