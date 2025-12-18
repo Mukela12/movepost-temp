@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import supabaseAuthService from '../supabase/api/authService'
@@ -24,9 +24,18 @@ export const AuthProvider = ({ children }) => {
   const [onboardingLoading, setOnboardingLoading] = useState(false)
   const navigate = useNavigate()
 
-  // Check onboarding status
+  // Ref to prevent duplicate onboarding status checks
+  const isCheckingOnboarding = useRef(false)
+
+  // Check onboarding status with debouncing
   const checkOnboardingStatus = async () => {
+    // Prevent duplicate calls
+    if (isCheckingOnboarding.current) {
+      return null
+    }
+
     try {
+      isCheckingOnboarding.current = true
       setOnboardingLoading(true)
       const status = await supabaseOnboardingService.getOnboardingStatus()
 
@@ -39,6 +48,7 @@ export const AuthProvider = ({ children }) => {
       return null
     } finally {
       setOnboardingLoading(false)
+      isCheckingOnboarding.current = false
     }
   }
 
@@ -71,13 +81,25 @@ export const AuthProvider = ({ children }) => {
       async (event, session) => {
         console.log('Auth state change:', event, session)
 
+        // Filter events: Only respond to meaningful auth events
+        // Ignore TOKEN_REFRESHED to prevent reload-like behavior on tab switching
+        const meaningfulEvents = ['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED', 'INITIAL_SESSION']
+        const shouldProcess = meaningfulEvents.includes(event)
+
+        if (!shouldProcess) {
+          console.log('Ignoring auth event:', event)
+          return
+        }
+
         if (session) {
           setSession(session)
           setUser(session.user)
           setIsAuthenticated(true)
 
-          // Load onboarding status when user logs in
-          await checkOnboardingStatus()
+          // Only load onboarding status on sign-in, not on every token refresh
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            await checkOnboardingStatus()
+          }
         } else {
           setSession(null)
           setUser(null)

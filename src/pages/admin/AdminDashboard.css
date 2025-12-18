@@ -7,6 +7,29 @@
   gap: 32px;
 }
 
+/* Sticky Stats Section */
+.admin-sticky-top {
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  background-color: #f7fafc;
+  padding-bottom: 16px;
+  margin: -32px -32px 24px;
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-top: 20px;
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
+  transition: all 0.2s ease;
+}
+
+.admin-sticky-top.scrolled {
+  padding-bottom: 12px;
+  margin-bottom: 0;
+  border-bottom-color: #cbd5e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
 .admin-dashboard-header {
   display: flex;
   align-items: center;

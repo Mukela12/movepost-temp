@@ -4,11 +4,35 @@
   margin: 0 auto;
 }
 
+/* Sticky Stats Section */
+.admin-sticky-top {
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  background-color: #f7fafc;
+  padding-bottom: 16px;
+  margin: -32px -32px 24px;
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-top: 20px;
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
+  transition: all 0.2s ease;
+}
+
+.admin-sticky-top.scrolled {
+  padding-bottom: 12px;
+  margin-bottom: 0;
+  border-bottom-color: #cbd5e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
 .admin-transactions-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 2rem;
+  padding-top: 80px;
 }
 
 .admin-transactions-header h1 {
@@ -111,7 +135,20 @@
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  max-height: 300px;
   overflow: hidden;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
+.admin-filters-panel.collapsed {
+  max-height: 0;
+  margin-bottom: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  border-color: transparent;
 }
 
 .admin-filters-grid {

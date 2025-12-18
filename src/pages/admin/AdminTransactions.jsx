@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import {
   DollarSign,
   Download,
-  Filter,
   Search,
   TrendingUp,
   CreditCard,
@@ -54,12 +53,28 @@ const AdminTransactions = () => {
     pageSize: 50
   });
 
-  const [showFilters, setShowFilters] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     loadTransactions();
     loadStats();
   }, [filters.status, filters.dateFrom, filters.dateTo, filters.isTestMode, filters.offset]);
+
+  // Scroll detection for collapsible filters
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+      if (scrollTop > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const loadTransactions = async () => {
     try {
@@ -236,21 +251,8 @@ const AdminTransactions = () => {
   return (
     <div className="admin-transactions">
       <div className="admin-transactions-header">
-        <div>
-          <h1>Transactions</h1>
-        </div>
 
         <div className="admin-transactions-actions">
-          <motion.button
-            className="admin-btn admin-btn-secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Filter size={18} />
-            Filters
-          </motion.button>
-
           <motion.button
             className="admin-btn admin-btn-primary"
             onClick={handleExportCSV}
@@ -264,140 +266,136 @@ const AdminTransactions = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="admin-metrics-grid">
-        <MetricCard
-          title="Successful Payments"
-          value={stats ? stats.successful_count || 0 : '...'}
-          icon={CheckCircle}
-          color="success"
-          loading={!stats}
-        />
-        <MetricCard
-          title="Failed Payments"
-          value={stats ? stats.failed_count || 0 : '...'}
-          icon={XCircle}
-          color="error"
-          loading={!stats}
-        />
-        <MetricCard
-          title="Processing"
-          value={stats ? stats.processing_count || 0 : '...'}
-          icon={Clock}
-          color="warning"
-          loading={!stats}
-        />
+      {/* Sticky Stats Section */}
+      <div className={`admin-sticky-top ${isScrolled ? 'scrolled' : ''}`}>
+        {/* Stats Cards */}
+        <div className="admin-metrics-grid">
+          <MetricCard
+            title="Successful Payments"
+            value={stats ? stats.successful_count || 0 : '...'}
+            icon={CheckCircle}
+            color="success"
+            loading={!stats}
+          />
+          <MetricCard
+            title="Failed Payments"
+            value={stats ? stats.failed_count || 0 : '...'}
+            icon={XCircle}
+            color="error"
+            loading={!stats}
+          />
+          <MetricCard
+            title="Processing"
+            value={stats ? stats.processing_count || 0 : '...'}
+            icon={Clock}
+            color="warning"
+            loading={!stats}
+          />
+        </div>
+
+        {/* Test Mode Indicator */}
+        {filters.isTestMode === true && (
+          <motion.div
+            className="admin-test-mode-banner"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <TestTube size={20} />
+            <span>Showing TEST MODE transactions only</span>
+            <button onClick={() => handleFilterChange('isTestMode', undefined)}>
+              Show All
+            </button>
+          </motion.div>
+        )}
+
+        {filters.isTestMode === false && (
+          <motion.div
+            className="admin-live-mode-banner"
+            style={{ backgroundColor: '#10b981', color: 'white', padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <TestTube size={20} />
+            <span>Showing LIVE MODE transactions only</span>
+            <button
+              onClick={() => handleFilterChange('isTestMode', undefined)}
+              style={{ marginLeft: 'auto', padding: '6px 12px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
+            >
+              Show All
+            </button>
+          </motion.div>
+        )}
       </div>
 
-      {/* Test Mode Indicator */}
-      {filters.isTestMode === true && (
-        <motion.div
-          className="admin-test-mode-banner"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <TestTube size={20} />
-          <span>Showing TEST MODE transactions only</span>
-          <button onClick={() => handleFilterChange('isTestMode', undefined)}>
-            Show All
-          </button>
-        </motion.div>
-      )}
-
-      {filters.isTestMode === false && (
-        <motion.div
-          className="admin-live-mode-banner"
-          style={{ backgroundColor: '#10b981', color: 'white', padding: '12px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <TestTube size={20} />
-          <span>Showing LIVE MODE transactions only</span>
-          <button
-            onClick={() => handleFilterChange('isTestMode', undefined)}
-            style={{ marginLeft: 'auto', padding: '6px 12px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
-          >
-            Show All
-          </button>
-        </motion.div>
-      )}
-
-      {/* Filters Panel */}
-      {showFilters && (
-        <motion.div
-          className="admin-filters-panel"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-        >
-          <div className="admin-filters-grid">
-            <div className="admin-filter-group">
-              <label>Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                <option value="succeeded">Succeeded</option>
-                <option value="processing">Processing</option>
-                <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
-
-            <div className="admin-filter-group">
-              <label>Date From</label>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-              />
-            </div>
-
-            <div className="admin-filter-group">
-              <label>Date To</label>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-              />
-            </div>
-
-            <div className="admin-filter-group">
-              <label>Mode</label>
-              <select
-                value={filters.isTestMode === undefined ? '' : filters.isTestMode.toString()}
-                onChange={(e) => {
-                  const value = e.target.value === '' ? undefined : e.target.value === 'true';
-                  handleFilterChange('isTestMode', value);
-                }}
-              >
-                <option value="">All Modes</option>
-                <option value="true">Test Mode</option>
-                <option value="false">Live Mode</option>
-              </select>
-            </div>
+      {/* Filters Panel - Always visible, collapses on scroll */}
+      <div className={`admin-filters-panel ${isScrolled ? 'collapsed' : ''}`}>
+        <div className="admin-filters-grid">
+          <div className="admin-filter-group">
+            <label>Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="succeeded">Succeeded</option>
+              <option value="processing">Processing</option>
+              <option value="failed">Failed</option>
+              <option value="refunded">Refunded</option>
+            </select>
           </div>
 
-          <button
-            className="admin-filters-clear"
-            onClick={() => {
-              setFilters({
-                ...filters,
-                status: '',
-                dateFrom: '',
-                dateTo: '',
-                isTestMode: undefined,
-                search: '',
-                offset: 0
-              });
-              setSearchParams({});
-            }}
-          >
-            Clear Filters
-          </button>
-        </motion.div>
-      )}
+          <div className="admin-filter-group">
+            <label>Date From</label>
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+            />
+          </div>
+
+          <div className="admin-filter-group">
+            <label>Date To</label>
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+            />
+          </div>
+
+          <div className="admin-filter-group">
+            <label>Mode</label>
+            <select
+              value={filters.isTestMode === undefined ? '' : filters.isTestMode.toString()}
+              onChange={(e) => {
+                const value = e.target.value === '' ? undefined : e.target.value === 'true';
+                handleFilterChange('isTestMode', value);
+              }}
+            >
+              <option value="">All Modes</option>
+              <option value="true">Test Mode</option>
+              <option value="false">Live Mode</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          className="admin-filters-clear"
+          onClick={() => {
+            setFilters({
+              ...filters,
+              status: '',
+              dateFrom: '',
+              dateTo: '',
+              isTestMode: undefined,
+              search: '',
+              offset: 0
+            });
+            setSearchParams({});
+          }}
+        >
+          Clear Filters
+        </button>
+      </div>
 
       {/* Transactions Table */}
       <motion.div

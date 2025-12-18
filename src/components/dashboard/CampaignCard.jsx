@@ -76,17 +76,6 @@ const CampaignCard = ({ campaign, onToggleStatus, onEdit, onDelete, onDuplicate 
         </div>
       )}
 
-      <div className="campaign-details">
-        <div className="detail-item">
-          <span className="detail-label">Target Area</span>
-          <span className="detail-value">{campaign.targetArea}</span>
-        </div>
-        <div className="detail-item">
-          <span className="detail-label">Postcards Sent</span>
-          <span className="detail-value">{campaign.postcardsSent.toLocaleString()}</span>
-        </div>
-      </div>
-
       <div className="campaign-actions">
         <motion.button
           className="view-details-button"

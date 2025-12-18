@@ -186,11 +186,7 @@ const AdminUsers = () => {
 
   return (
     <div className="admin-users">
-      <div className="admin-users-header">
-        <div>
-          <h1>Users</h1>
-        </div>
-      </div>
+
 
       {/* Filters */}
       <div className="admin-users-filters">
