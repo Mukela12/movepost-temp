@@ -24,6 +24,28 @@ const Dashboard = () => {
     loadDashboardData();
   }, []);
 
+  // Add scroll detection for sticky header styling
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const scrollContainer = e.target;
+      const stickyElement = document.querySelector('.dashboard-sticky-top');
+      if (stickyElement) {
+        if (scrollContainer.scrollTop > 0) {
+          stickyElement.classList.add('scrolled');
+        } else {
+          stickyElement.classList.remove('scrolled');
+        }
+      }
+    };
+
+    // Get the actual scroll container
+    const scrollContainer = document.querySelector('.dashboard-content-wrapper');
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
@@ -39,9 +61,14 @@ const Dashboard = () => {
           status: campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1),
           approvalStatus: campaign.approval_status || campaign.status,
           isActive: campaign.status === 'active',
-          targetArea: campaign.targeting_type === 'zip_codes' ?
-            `${campaign.total_recipients || campaign.target_zip_codes?.length || 0} ZIP${(campaign.total_recipients || campaign.target_zip_codes?.length) !== 1 ? 's' : ''}` :
-            'Radius',
+          targetArea: campaign.targeting_type === 'zip_codes' || campaign.targeting_type === 'zip' ?
+            'ZIP Codes' :
+            campaign.targeting_type === 'radius' ?
+            'Radius' :
+            (campaign.targeting_type || 'N/A')
+              .split('_')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' '),
           postcardsSent: campaign.postcards_sent || 0,
           totalRecipients: campaign.total_recipients || 0,
           totalCost: campaign.total_cost || 0,
@@ -189,19 +216,20 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="dashboard-page">
-          {/* Header */}
-          <div className="dashboard-header">
-            <h1 className="dashboard-title">Dashboard</h1>
-            <motion.button
-              className="create-campaign-button"
-              onClick={handleCreateCampaign}
-              whileHover={{ scale: 1.02, boxShadow: "0 6px 16px rgba(32, 178, 170, 0.25)" }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Plus size={16} />
-              Create Campaign
-            </motion.button>
-          </div>
+          {/* Sticky Top Section */}
+          <div className="dashboard-sticky-top">
+            {/* Header */}
+            <div className="dashboard-header">
+              <motion.button
+                className="create-campaign-button"
+                onClick={handleCreateCampaign}
+                whileHover={{ scale: 1.02, boxShadow: "0 6px 16px rgba(32, 178, 170, 0.25)" }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Plus size={16} />
+                Create Campaign
+              </motion.button>
+            </div>
 
           {/* Workflow Status Banners */}
           {hasPendingCampaigns && (
@@ -331,6 +359,7 @@ const Dashboard = () => {
               </motion.div>
             </div>
           )}
+          </div>
 
           {/* Campaigns Grid */}
           <div className="campaigns-grid">

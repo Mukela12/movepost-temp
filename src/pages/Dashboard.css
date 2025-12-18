@@ -10,6 +10,29 @@
   background-color: var(--color-white);
 }
 
+/* Sticky Top Section */
+.dashboard-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: var(--color-white);
+  padding-bottom: var(--space-4);
+  margin: calc(var(--space-8) * -1) calc(var(--space-10) * -1) var(--space-4);
+  padding-left: var(--space-10);
+  padding-right: var(--space-10);
+  padding-top: var(--space-5);
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0);
+  transition: all 0.2s ease;
+}
+
+.dashboard-sticky-top.scrolled {
+  padding-bottom: var(--space-3);
+  margin-bottom: 0;
+  border-bottom-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
 /* Dashboard Loading State */
 .dashboard-loading {
   display: flex;
@@ -63,15 +86,9 @@
 /* Dashboard Header */
 .dashboard-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-bottom: 3rem;
-}
-
-.dashboard-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-gray-900);
+  margin-bottom: var(--space-4);
 }
 
 /* Create Campaign Button - Use standardized design system styles */
@@ -113,7 +130,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 3rem;
+  margin-bottom: var(--space-6);
   gap: 1.5rem;
 }
 
@@ -198,16 +215,16 @@
 .campaigns-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--space-6);
-  margin-top: var(--space-8);
-  padding-bottom: var(--space-10);
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+  padding-bottom: var(--space-8);
 }
 
 /* Responsive Design */
 @media (max-width: 1200px) {
   .campaigns-grid {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--space-5);
+    gap: var(--space-4);
   }
 }
 

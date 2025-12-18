@@ -2,12 +2,17 @@ import React from 'react';
 import './ActionButtons.css';
 
 const ActionButtons = ({ onEdit, onCopy, onRefresh, onDelete }) => {
+  const handleClick = (e, callback) => {
+    e.stopPropagation();
+    if (callback) callback();
+  };
+
   return (
     <div className="table-actions">
       {onEdit && (
-        <button 
+        <button
           className="action-btn"
-          onClick={onEdit}
+          onClick={(e) => handleClick(e, onEdit)}
           title="Edit"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -17,9 +22,9 @@ const ActionButtons = ({ onEdit, onCopy, onRefresh, onDelete }) => {
       )}
       
       {onCopy && (
-        <button 
+        <button
           className="action-btn"
-          onClick={onCopy}
+          onClick={(e) => handleClick(e, onCopy)}
           title="Copy"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -30,9 +35,9 @@ const ActionButtons = ({ onEdit, onCopy, onRefresh, onDelete }) => {
       )}
       
       {onRefresh && (
-        <button 
+        <button
           className="action-btn"
-          onClick={onRefresh}
+          onClick={(e) => handleClick(e, onRefresh)}
           title="Refresh"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -44,9 +49,9 @@ const ActionButtons = ({ onEdit, onCopy, onRefresh, onDelete }) => {
       )}
       
       {onDelete && (
-        <button 
+        <button
           className="action-btn delete"
-          onClick={onDelete}
+          onClick={(e) => handleClick(e, onDelete)}
           title="Delete"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

@@ -3,6 +3,7 @@ import { Mail, ChevronDown, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import companyService from '../../supabase/api/companyService';
 import toast from 'react-hot-toast';
+import { parseAddress } from '../../utils/addressFormatter';
 import './BusinessTab.css';
 
 const BusinessTab = ({ onSave, onCancel }) => {
@@ -14,7 +15,11 @@ const BusinessTab = ({ onSave, onCancel }) => {
     businessName: '',
     businessAddress: '',
     phoneNumber: '',
-    streetAddress: '',
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: '',
     industryCategory: ''
   });
 
@@ -34,11 +39,33 @@ const BusinessTab = ({ onSave, onCancel }) => {
 
         if (company) {
           setHasCompany(true);
+          // Parse address from JSON to separate fields
+          const rawAddress = company.location || company.street_address || '';
+          const parsedAddress = parseAddress(rawAddress);
+
+          // Extract address components
+          let street = '', city = '', state = '', postalCode = '', country = '';
+
+          if (typeof parsedAddress === 'object') {
+            street = parsedAddress.street || parsedAddress.streetAddress || '';
+            city = parsedAddress.city || '';
+            state = parsedAddress.state || parsedAddress.province || '';
+            postalCode = parsedAddress.postalCode || parsedAddress.zipCode || parsedAddress.zip || '';
+            country = parsedAddress.country || '';
+          } else if (typeof parsedAddress === 'string') {
+            // If it's a plain string, put it in the street field
+            street = parsedAddress;
+          }
+
           setFormData({
             businessName: company.name || '',
             businessAddress: company.website || '',
             phoneNumber: company.phone_number || '',
-            streetAddress: company.location || company.street_address || '',
+            street,
+            city,
+            state,
+            postalCode,
+            country,
             industryCategory: company.business_category || company.industry || ''
           });
         } else {
@@ -78,13 +105,27 @@ const BusinessTab = ({ onSave, onCancel }) => {
         return;
       }
 
+      // Combine address fields into a JSON object
+      const addressObject = {
+        street: formData.street.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        postalCode: formData.postalCode.trim(),
+        country: formData.country.trim()
+      };
+
+      // Remove empty fields from address object
+      Object.keys(addressObject).forEach(key => {
+        if (!addressObject[key]) delete addressObject[key];
+      });
+
       // Prepare update data
       const updateData = {
         name: formData.businessName.trim(),
         website: formData.businessAddress.trim(),
         phone_number: formData.phoneNumber.trim(),
-        location: formData.streetAddress.trim(),
-        street_address: formData.streetAddress.trim(),
+        location: JSON.stringify(addressObject),
+        street_address: JSON.stringify(addressObject),
         business_category: formData.industryCategory,
         industry: formData.industryCategory
       };
@@ -209,15 +250,69 @@ const BusinessTab = ({ onSave, onCancel }) => {
 
         <div className="form-row">
           <label className="form-label">
-            Street address <span className="required">*</span>
+            Street Address
           </label>
           <input
             type="text"
             className="form-input"
-            value={formData.streetAddress}
-            onChange={(e) => handleInputChange('streetAddress', e.target.value)}
+            value={formData.street}
+            onChange={(e) => handleInputChange('street', e.target.value)}
             placeholder="Street address"
           />
+        </div>
+
+        <div className="form-row" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+          <div>
+            <label className="form-label">
+              City <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              value={formData.city}
+              onChange={(e) => handleInputChange('city', e.target.value)}
+              placeholder="City"
+            />
+          </div>
+          <div>
+            <label className="form-label">
+              State/Province <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              value={formData.state}
+              onChange={(e) => handleInputChange('state', e.target.value)}
+              placeholder="State or Province"
+            />
+          </div>
+        </div>
+
+        <div className="form-row" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+          <div>
+            <label className="form-label">
+              Postal Code
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              value={formData.postalCode}
+              onChange={(e) => handleInputChange('postalCode', e.target.value)}
+              placeholder="Postal/Zip code"
+            />
+          </div>
+          <div>
+            <label className="form-label">
+              Country <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              value={formData.country}
+              onChange={(e) => handleInputChange('country', e.target.value)}
+              placeholder="Country"
+            />
+          </div>
         </div>
 
         <div className="form-row">

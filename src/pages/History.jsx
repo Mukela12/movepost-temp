@@ -23,10 +23,37 @@ const History = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Load campaigns on mount
   useEffect(() => {
     loadCampaigns();
+  }, []);
+
+  // Add scroll detection for sticky header styling and collapsible filters
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const scrollContainer = e.target;
+      const scrollTop = scrollContainer.scrollTop;
+      const stickyElement = document.querySelector('.history-sticky-top');
+
+      if (stickyElement) {
+        if (scrollTop > 0) {
+          stickyElement.classList.add('scrolled');
+          setIsScrolled(true);
+        } else {
+          stickyElement.classList.remove('scrolled');
+          setIsScrolled(false);
+        }
+      }
+    };
+
+    // Get the actual scroll container
+    const scrollContainer = document.querySelector('.dashboard-content-wrapper');
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll);
+      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }
   }, []);
 
   const loadCampaigns = async () => {
@@ -88,6 +115,10 @@ const History = () => {
     const campaign = campaigns.find(c => c.id === campaignId);
     setCampaignToDelete(campaign);
     setShowDeleteModal(true);
+  };
+
+  const handleRowClick = (campaign) => {
+    navigate(`/campaign/${campaign.id}/details`);
   };
 
   const confirmDeleteCampaign = async () => {
@@ -227,11 +258,8 @@ const History = () => {
   return (
     <DashboardLayout>
       <div className="history-page">
-          {/* Header */}
-          <div className="history-header">
-            <h1 className="history-title">New Mover</h1>
-          </div>
-
+          {/* Sticky Top Section */}
+          <div className="history-sticky-top">
           {/* Summary Statistics */}
           {!isLoading && campaigns.length > 0 && (
             <div className="stats-grid">
@@ -276,7 +304,7 @@ const History = () => {
 
           {/* Filters */}
           {!isLoading && campaigns.length > 0 && (
-            <div className="filters-section">
+            <div className={`filters-section ${isScrolled ? 'collapsed' : ''}`}>
               <div className="filter-group">
                 <label className="filter-label">Status</label>
                 <select
@@ -329,6 +357,7 @@ const History = () => {
               )}
             </div>
           )}
+          </div>
 
           {/* Data Table */}
           {isLoading ? (
@@ -356,6 +385,7 @@ const History = () => {
               columns={columns}
               data={filteredCampaigns}
               className="history-table"
+              onRowClick={handleRowClick}
             />
           )}
       </div>

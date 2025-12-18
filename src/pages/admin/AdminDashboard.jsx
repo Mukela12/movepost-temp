@@ -20,9 +20,26 @@ const AdminDashboard = () => {
   const [pendingCampaigns, setPendingCampaigns] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
+  }, []);
+
+  // Scroll detection for sticky stats
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+      if (scrollTop > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const loadDashboardData = async () => {
@@ -91,45 +108,43 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-dashboard">
-      <div className="admin-dashboard-header">
-        <div>
-          <h1>Dashboard</h1>
-        </div>
-      </div>
 
-      {/* Metrics Grid */}
-      <div className="admin-metrics-grid">
-        <MetricCard
-          title="Pending Approval"
-          value={loading ? '...' : stats?.pending_campaigns || 0}
-          icon={Clock}
-          color="warning"
-          loading={loading}
-          onClick={() => navigate('/admin/campaigns?status=pending')}
-        />
-        <MetricCard
-          title="Active Campaigns"
-          value={loading ? '...' : stats?.active_campaigns || 0}
-          icon={CheckCircle}
-          color="success"
-          loading={loading}
-          onClick={() => navigate('/admin/campaigns?status=active')}
-        />
-        <MetricCard
-          title="Total Users"
-          value={loading ? '...' : stats?.total_users || 0}
-          icon={Users}
-          color="info"
-          loading={loading}
-          onClick={() => navigate('/admin/users')}
-        />
-        <MetricCard
-          title="Postcards Sent"
-          value={loading ? '...' : stats?.total_postcards_sent || 0}
-          icon={Mail}
-          color="primary"
-          loading={loading}
-        />
+      {/* Sticky Stats Section */}
+      <div className={`admin-sticky-top ${isScrolled ? 'scrolled' : ''}`}>
+        {/* Metrics Grid */}
+        <div className="admin-metrics-grid">
+          <MetricCard
+            title="Pending Approval"
+            value={loading ? '...' : stats?.pending_campaigns || 0}
+            icon={Clock}
+            color="warning"
+            loading={loading}
+            onClick={() => navigate('/admin/campaigns?status=pending')}
+          />
+          <MetricCard
+            title="Active Campaigns"
+            value={loading ? '...' : stats?.active_campaigns || 0}
+            icon={CheckCircle}
+            color="success"
+            loading={loading}
+            onClick={() => navigate('/admin/campaigns?status=active')}
+          />
+          <MetricCard
+            title="Total Users"
+            value={loading ? '...' : stats?.total_users || 0}
+            icon={Users}
+            color="info"
+            loading={loading}
+            onClick={() => navigate('/admin/users')}
+          />
+          <MetricCard
+            title="Postcards Sent"
+            value={loading ? '...' : stats?.total_postcards_sent || 0}
+            icon={Mail}
+            color="primary"
+            loading={loading}
+          />
+        </div>
       </div>
 
       {/* Content Grid */}
